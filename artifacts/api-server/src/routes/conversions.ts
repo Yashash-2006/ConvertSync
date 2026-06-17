@@ -174,7 +174,8 @@ router.get("/conversions/:id/download", async (req, res): Promise<void> => {
   }
 
   const outputDir = path.join(OUTPUTS_DIR, String(id));
-  const outputFilename = `${path.basename(conversion.originalFilename, path.extname(conversion.originalFilename))}.${conversion.targetFormat}`;
+  const originalBase = path.basename(conversion.originalFilename, path.extname(conversion.originalFilename));
+  const outputFilename = `${id}_${originalBase}.${conversion.targetFormat}`;
   const filePath = path.join(outputDir, outputFilename);
 
   try {
