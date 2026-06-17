@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Word ↔ PDF Converter API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: conversions
+    description: File conversion operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,105 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /conversions:
+    get:
+      operationId: listConversions
+      tags: [conversions]
+      summary: List all conversions
+      description: Returns conversion history ordered newest first
+      responses:
+        "200":
+          description: List of conversions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversion"
+    post:
+      operationId: createConversion
+      tags: [conversions]
+      summary: Upload and convert a file
+      description: Upload a .docx or .pdf file and convert it to the target format
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ConversionInput"
+      responses:
+        "201":
+          description: Conversion created and completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversion"
+        "400":
+          description: Invalid file or format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /conversions/stats:
+    get:
+      operationId: getConversionStats
+      tags: [conversions]
+      summary: Get conversion statistics
+      description: Returns aggregate stats about all conversions
+      responses:
+        "200":
+          description: Conversion statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversionStats"
+
+  /conversions/{id}:
+    get:
+      operationId: getConversion
+      tags: [conversions]
+      summary: Get a single conversion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversion record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversion"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteConversion
+      tags: [conversions]
+      summary: Delete a conversion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +135,67 @@ components:
       required:
         - status
 
+    ConversionInput:
+      type: object
+      required: [file, targetFormat]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: The file to convert (.docx or .pdf)
+        targetFormat:
+          type: string
+          enum: [pdf, docx]
+          description: Target output format
+
+    Conversion:
+      type: object
+      required: [id, originalFilename, originalFormat, targetFormat, status, fileSizeBytes, createdAt]
+      properties:
+        id:
+          type: integer
+        originalFilename:
+          type: string
+        originalFormat:
+          type: string
+        targetFormat:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed]
+        errorMessage:
+          type: ["string", "null"]
+        fileSizeBytes:
+          type: integer
+        convertedFileSizeBytes:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    ConversionStats:
+      type: object
+      required: [totalConversions, successCount, failureCount, docxToPdfCount, pdfToDocxCount, totalBytesProcessed]
+      properties:
+        totalConversions:
+          type: integer
+        successCount:
+          type: integer
+        failureCount:
+          type: integer
+        docxToPdfCount:
+          type: integer
+        pdfToDocxCount:
+          type: integer
+        totalBytesProcessed:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
