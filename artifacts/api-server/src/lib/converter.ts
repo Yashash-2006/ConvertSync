@@ -22,39 +22,100 @@ export async function convertFile(
 ): Promise<ConversionResult> {
   await fs.mkdir(outputDir, { recursive: true });
 
+  logger.info({ inputPath, targetFormat }, "Starting file conversion");
+
+  if (targetFormat === "pdf") {
+    return convertDocxToPdf(inputPath, outputDir);
+  } else {
+    return convertPdfToDocx(inputPath, outputDir);
+  }
+}
+
+async function convertDocxToPdf(
+  inputPath: string,
+  outputDir: string,
+): Promise<ConversionResult> {
   const sofficeBin = await resolveSoffice();
 
-  logger.info({ inputPath, targetFormat, sofficeBin }, "Starting file conversion");
+  try {
+    await execFileAsync(
+      sofficeBin,
+      [
+        "--headless",
+        "--norestore",
+        "--nologo",
+        "--nofirststartwizard",
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        outputDir,
+        inputPath,
+      ],
+      {
+        timeout: 120_000,
+        env: {
+          ...process.env,
+          HOME: "/tmp/libreoffice-home",
+        },
+      },
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error({ err: message, inputPath }, "LibreOffice DOCX→PDF failed");
+    throw new Error(`DOCX→PDF conversion failed: ${message}`);
+  }
 
-  const filterArg = targetFormat === "pdf" ? "pdf" : "docx";
+  return resolveOutput(inputPath, outputDir, "pdf");
+}
+
+async function convertPdfToDocx(
+  inputPath: string,
+  outputDir: string,
+): Promise<ConversionResult> {
+  const inputBasename = path.basename(inputPath, path.extname(inputPath));
+  const outputPath = path.join(outputDir, `${inputBasename}.docx`);
+
+  const python3 = await resolvePython();
+
+  const script = `
+from pdf2docx import Converter
+import sys
+cv = Converter(sys.argv[1])
+cv.convert(sys.argv[2])
+cv.close()
+`.trim();
+
+  const scriptPath = path.join(outputDir, "_convert.py");
+  await fs.writeFile(scriptPath, script, "utf-8");
 
   try {
-    await execFileAsync(sofficeBin, [
-      "--headless",
-      "--norestore",
-      "--nologo",
-      "--nofirststartwizard",
-      `--convert-to`,
-      filterArg,
-      "--outdir",
-      outputDir,
-      inputPath,
-    ], {
-      timeout: 120_000,
-      env: {
-        ...process.env,
-        HOME: "/tmp/libreoffice-home",
-      },
+    await execFileAsync(python3, [scriptPath, inputPath, outputPath], {
+      timeout: 180_000,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error({ err: message, inputPath, targetFormat }, "LibreOffice conversion failed");
-    throw new Error(`Conversion failed: ${message}`);
+    logger.error({ err: message, inputPath }, "pdf2docx PDF→DOCX failed");
+    throw new Error(`PDF→DOCX conversion failed: ${message}`);
+  } finally {
+    await fs.unlink(scriptPath).catch(() => undefined);
   }
 
+  try {
+    const stat = await fs.stat(outputPath);
+    logger.info({ outputPath, size: stat.size }, "Conversion completed");
+    return { outputPath, fileSizeBytes: stat.size };
+  } catch {
+    throw new Error(`Converted file not found at expected path: ${outputPath}`);
+  }
+}
+
+async function resolveOutput(
+  inputPath: string,
+  outputDir: string,
+  ext: string,
+): Promise<ConversionResult> {
   const inputBasename = path.basename(inputPath, path.extname(inputPath));
-  const outputFilename = `${inputBasename}.${targetFormat}`;
-  const outputPath = path.join(outputDir, outputFilename);
+  const outputPath = path.join(outputDir, `${inputBasename}.${ext}`);
 
   try {
     const stat = await fs.stat(outputPath);
@@ -70,7 +131,6 @@ async function resolveSoffice(): Promise<string> {
     SOFFICE_PATH,
     "/usr/bin/soffice",
     "/usr/local/bin/soffice",
-    "soffice",
   ];
 
   for (const candidate of candidates) {
@@ -90,7 +150,20 @@ async function resolveSoffice(): Promise<string> {
     // not in PATH
   }
 
+  throw new Error("LibreOffice (soffice) not found.");
+}
+
+async function resolvePython(): Promise<string> {
+  for (const bin of ["python3", "python"]) {
+    try {
+      const { stdout } = await execFileAsync("which", [bin]);
+      const found = stdout.trim();
+      if (found) return found;
+    } catch {
+      // try next
+    }
+  }
   throw new Error(
-    "LibreOffice (soffice) not found. Install it with: nix-env -iA nixpkgs.libreoffice",
+    "Python 3 not found. Required for PDF→DOCX conversion (pdf2docx).",
   );
 }
