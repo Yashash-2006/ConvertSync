@@ -104,11 +104,7 @@ export default function Home() {
   const convertFile = useCallback((fileObj: QueuedFile) => {
     setFiles((prev) => prev.map(f => f.id === fileObj.id ? { ...f, status: "converting", progress: 30 } : f));
     
-    const form = new FormData();
-    form.append("file", fileObj.file);
-    form.append("targetFormat", fileObj.targetFormat);
-
-    createConversion.mutate({ data: form as any }, {
+    createConversion.mutate({ data: { file: fileObj.file, targetFormat: fileObj.targetFormat } }, {
       onSuccess: (data) => {
         setFiles((prev) => prev.map(f => f.id === fileObj.id ? { 
           ...f, 
