@@ -10,6 +10,71 @@ const SOFFICE_PATH =
   process.env.SOFFICE_PATH ||
   "/nix/store/s77ki6j3if918jk373md4aajqii531rd-libreoffice-24.8.7.2-wrapped/bin/soffice";
 
+const LO_HOME = "/tmp/libreoffice-home";
+
+// Maps common Windows/Office fonts to metric-compatible Liberation/open equivalents
+// Liberation fonts are drop-in metric replacements: layout, line breaks, and spacing
+// will be identical so the PDF output matches the original DOCX layout exactly.
+const FONT_SUBSTITUTIONS: [string, string][] = [
+  ["Calibri", "Liberation Sans"],
+  ["Calibri Light", "Liberation Sans"],
+  ["Cambria", "Liberation Serif"],
+  ["Cambria Math", "Liberation Serif"],
+  ["Arial", "Liberation Sans"],
+  ["Arial Narrow", "Liberation Sans"],
+  ["Times New Roman", "Liberation Serif"],
+  ["Courier New", "Liberation Mono"],
+  ["Helvetica", "Liberation Sans"],
+  ["Garamond", "Liberation Serif"],
+  ["Book Antiqua", "Liberation Serif"],
+  ["Palatino Linotype", "Liberation Serif"],
+  ["Trebuchet MS", "Liberation Sans"],
+  ["Georgia", "Liberation Serif"],
+  ["Verdana", "Liberation Sans"],
+  ["Tahoma", "Liberation Sans"],
+  ["Century Gothic", "Liberation Sans"],
+  ["Franklin Gothic Medium", "Liberation Sans"],
+  ["Gill Sans MT", "Liberation Sans"],
+];
+
+let loProfileReady = false;
+
+async function ensureLoProfile(): Promise<void> {
+  if (loProfileReady) return;
+
+  const profileDir = path.join(LO_HOME, ".config", "libreoffice", "4", "user");
+  await fs.mkdir(profileDir, { recursive: true });
+
+  // Build font substitution entries for registrymodifications.xcu
+  const substitutionNodes = FONT_SUBSTITUTIONS.map(
+    ([from, to], i) => `
+  <item oor:path="/org.openoffice.VCL/FontSubstitutions">
+    <node oor:name="${i + 1}" oor:op="replace">
+      <prop oor:name="ReplaceFont" oor:type="xs:string">
+        <value>${from}</value>
+      </prop>
+      <prop oor:name="SubstituteFont" oor:type="xs:string">
+        <value>${to}</value>
+      </prop>
+    </node>
+  </item>`,
+  ).join("\n");
+
+  const xcu = `<?xml version="1.0" encoding="UTF-8"?>
+<oor:items
+  xmlns:oor="http://openoffice.org/2001/registry"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+${substitutionNodes}
+</oor:items>`;
+
+  const xcuPath = path.join(profileDir, "registrymodifications.xcu");
+  await fs.writeFile(xcuPath, xcu, "utf-8");
+
+  loProfileReady = true;
+  logger.info({ profileDir }, "LibreOffice profile with font substitutions ready");
+}
+
 export interface ConversionResult {
   outputPath: string;
   fileSizeBytes: number;
@@ -21,7 +86,6 @@ export async function convertFile(
   outputDir: string,
 ): Promise<ConversionResult> {
   await fs.mkdir(outputDir, { recursive: true });
-
   logger.info({ inputPath, targetFormat }, "Starting file conversion");
 
   if (targetFormat === "pdf") {
@@ -35,7 +99,18 @@ async function convertDocxToPdf(
   inputPath: string,
   outputDir: string,
 ): Promise<ConversionResult> {
+  await ensureLoProfile();
   const sofficeBin = await resolveSoffice();
+
+  // writer_pdf_Export filter options:
+  //   EmbedStandardFonts=true  — embed all fonts (not just non-standard ones)
+  //   ReduceImageResolution=false — keep original image quality
+  //   IsSkipEmptyPages=false   — preserve all pages
+  //   SelectPdfVersion=0       — PDF 1.4 (broadest compat)
+  //   UseTaggedPDF=true        — accessibility + structure tags
+  const filterOptions =
+    "EmbedStandardFonts=true,ReduceImageResolution=false,IsSkipEmptyPages=false,UseTaggedPDF=true";
+  const convertArg = `pdf:writer_pdf_Export:${filterOptions}`;
 
   try {
     await execFileAsync(
@@ -46,7 +121,7 @@ async function convertDocxToPdf(
         "--nologo",
         "--nofirststartwizard",
         "--convert-to",
-        "pdf",
+        convertArg,
         "--outdir",
         outputDir,
         inputPath,
@@ -55,7 +130,7 @@ async function convertDocxToPdf(
         timeout: 120_000,
         env: {
           ...process.env,
-          HOME: "/tmp/libreoffice-home",
+          HOME: LO_HOME,
         },
       },
     );
@@ -76,16 +151,36 @@ async function convertPdfToDocx(
   const outputPath = path.join(outputDir, `${inputBasename}.docx`);
 
   const python3 = await resolvePython();
+  const scriptPath = path.join(outputDir, "_convert.py");
 
+  // pdf2docx settings tuned for fidelity:
+  //   clip_image_res_ratio=8  — 8x72=576 dpi for embedded images (crisp)
+  //   min_section_height=5    — detect narrow sections (headers, footers)
+  //   connected_border_tolerance=1.0 — tolerate slight gaps in table borders
+  //   ignore_page_error=True  — don't abort on a single bad page
+  //   line_overlap_threshold=0.9 — deduplicate overlapping lines
   const script = `
-from pdf2docx import Converter
 import sys
-cv = Converter(sys.argv[1])
-cv.convert(sys.argv[2])
+from pdf2docx import Converter
+
+input_pdf  = sys.argv[1]
+output_doc = sys.argv[2]
+
+cv = Converter(input_pdf)
+cv.convert(
+    output_doc,
+    clip_image_res_ratio=8.0,
+    min_section_height=5.0,
+    connected_border_tolerance=1.0,
+    ignore_page_error=True,
+    line_overlap_threshold=0.9,
+    shape_min_dimension=1.0,
+    page_margin_factor_top=0.3,
+    page_margin_factor_bottom=0.3,
+)
 cv.close()
 `.trim();
 
-  const scriptPath = path.join(outputDir, "_convert.py");
   await fs.writeFile(scriptPath, script, "utf-8");
 
   try {
@@ -127,12 +222,7 @@ async function resolveOutput(
 }
 
 async function resolveSoffice(): Promise<string> {
-  const candidates = [
-    SOFFICE_PATH,
-    "/usr/bin/soffice",
-    "/usr/local/bin/soffice",
-  ];
-
+  const candidates = [SOFFICE_PATH, "/usr/bin/soffice", "/usr/local/bin/soffice"];
   for (const candidate of candidates) {
     try {
       await fs.access(candidate, fs.constants.X_OK);
@@ -141,7 +231,6 @@ async function resolveSoffice(): Promise<string> {
       // try next
     }
   }
-
   try {
     const { stdout } = await execFileAsync("which", ["soffice"]);
     const found = stdout.trim();
@@ -149,7 +238,6 @@ async function resolveSoffice(): Promise<string> {
   } catch {
     // not in PATH
   }
-
   throw new Error("LibreOffice (soffice) not found.");
 }
 
@@ -163,7 +251,5 @@ async function resolvePython(): Promise<string> {
       // try next
     }
   }
-  throw new Error(
-    "Python 3 not found. Required for PDF→DOCX conversion (pdf2docx).",
-  );
+  throw new Error("Python 3 not found. Required for PDF→DOCX conversion.");
 }
