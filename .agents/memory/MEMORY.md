@@ -1,0 +1,2 @@
+- [Orval mutateAsync wrapper](orval-mutation-wrapper.md) — Orval multipart hooks require `{ data: InputType }` not bare fields.
+- [LibreOffice conversion pattern](libreoffice-conversion.md) — LibreOffice writes output to input dir; use `_lo_tmp` subdir to avoid collisions.

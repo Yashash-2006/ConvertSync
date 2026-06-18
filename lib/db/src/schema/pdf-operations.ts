@@ -1,7 +1,11 @@
 import { pgTable, serial, text, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
 
 export const pdfOperationStatusEnum = pgEnum("pdf_operation_status", ["pending", "completed", "failed"]);
-export const pdfOperationTypeEnum = pgEnum("pdf_operation_type", ["merge", "split", "compress", "protect"]);
+export const pdfOperationTypeEnum = pgEnum("pdf_operation_type", [
+  "merge", "split", "compress", "protect",
+  "rotate", "pdf-to-jpg", "jpg-to-pdf", "watermark", "unlock", "ocr",
+  "pdf-to-pptx", "pdf-to-xlsx", "pptx-to-pdf", "xlsx-to-pdf",
+]);
 
 export const pdfOperationsTable = pgTable("pdf_operations", {
   id: serial("id").primaryKey(),

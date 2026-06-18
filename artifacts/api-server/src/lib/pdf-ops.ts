@@ -230,6 +230,261 @@ with open(output_path, "wb") as f:
   return { outputPath, resultFilename, fileSizeBytes: stat.size };
 }
 
+// ─── Rotate ───────────────────────────────────────────────────────────────────
+
+export async function rotatePdf(
+  inputPath: string,
+  outputDir: string,
+  resultFilename: string,
+  angle: 90 | 180 | 270 = 90,
+): Promise<PdfOpResult> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const outputPath = path.join(outputDir, resultFilename);
+  const python3 = await resolvePython();
+  const script = `
+import sys
+from pypdf import PdfReader, PdfWriter
+
+reader = PdfReader(sys.argv[1])
+writer = PdfWriter()
+angle  = int(sys.argv[3])
+for page in reader.pages:
+    page.rotate(angle)
+    writer.add_page(page)
+with open(sys.argv[2], "wb") as f:
+    writer.write(f)
+`.trim();
+  const sp = path.join(outputDir, "_rotate.py");
+  await fs.writeFile(sp, script, "utf-8");
+  try {
+    await execFileAsync(python3, [sp, inputPath, outputPath, String(angle)], { timeout: 120_000 });
+  } finally {
+    await fs.unlink(sp).catch(() => undefined);
+  }
+  const stat = await fs.stat(outputPath);
+  return { outputPath, resultFilename, fileSizeBytes: stat.size };
+}
+
+// ─── PDF → JPG (ZIP) ──────────────────────────────────────────────────────────
+
+export async function pdfToJpg(
+  inputPath: string,
+  outputDir: string,
+  resultFilename: string,
+  dpi: number = 150,
+): Promise<PdfOpResult> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const jpgDir = path.join(outputDir, "pages");
+  await fs.mkdir(jpgDir, { recursive: true });
+  const python3 = await resolvePython();
+  const script = `
+import sys, os, fitz
+
+doc = fitz.open(sys.argv[1])
+out_dir = sys.argv[2]
+dpi = int(sys.argv[3])
+mat = fitz.Matrix(dpi / 72, dpi / 72)
+for i, page in enumerate(doc):
+    pix = page.get_pixmap(matrix=mat)
+    pix.save(os.path.join(out_dir, f"page_{i+1:04d}.jpg"))
+`.trim();
+  const sp = path.join(outputDir, "_pdf2jpg.py");
+  await fs.writeFile(sp, script, "utf-8");
+  try {
+    await execFileAsync(python3, [sp, inputPath, jpgDir, String(dpi)], { timeout: 120_000 });
+  } finally {
+    await fs.unlink(sp).catch(() => undefined);
+  }
+  const zipPath = path.join(outputDir, resultFilename);
+  await zipDirectory(jpgDir, zipPath);
+  await fs.rm(jpgDir, { recursive: true, force: true });
+  const stat = await fs.stat(zipPath);
+  return { outputPath: zipPath, resultFilename, fileSizeBytes: stat.size };
+}
+
+// ─── JPG → PDF ────────────────────────────────────────────────────────────────
+
+export async function jpgToPdf(
+  inputPaths: string[],
+  outputDir: string,
+  resultFilename: string,
+): Promise<PdfOpResult> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const outputPath = path.join(outputDir, resultFilename);
+  const python3 = await resolvePython();
+  const script = `
+import sys, json
+from PIL import Image
+
+paths  = json.loads(sys.argv[1])
+output = sys.argv[2]
+
+images = []
+for p in paths:
+    img = Image.open(p).convert("RGB")
+    images.append(img)
+
+if not images:
+    raise ValueError("No images provided")
+
+images[0].save(output, save_all=True, append_images=images[1:])
+`.trim();
+  const sp = path.join(outputDir, "_jpg2pdf.py");
+  await fs.writeFile(sp, script, "utf-8");
+  try {
+    await execFileAsync(python3, [sp, JSON.stringify(inputPaths), outputPath], { timeout: 120_000 });
+  } finally {
+    await fs.unlink(sp).catch(() => undefined);
+  }
+  const stat = await fs.stat(outputPath);
+  return { outputPath, resultFilename, fileSizeBytes: stat.size };
+}
+
+// ─── Watermark ────────────────────────────────────────────────────────────────
+
+export async function watermarkPdf(
+  inputPath: string,
+  outputDir: string,
+  resultFilename: string,
+  text: string,
+): Promise<PdfOpResult> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const outputPath = path.join(outputDir, resultFilename);
+  const python3 = await resolvePython();
+  const script = `
+import sys, fitz
+
+doc  = fitz.open(sys.argv[1])
+text = sys.argv[3]
+
+for page in doc:
+    w, h = page.rect.width, page.rect.height
+    for x_off, y_off in [(w*0.15, h*0.35), (w*0.40, h*0.65)]:
+        page.insert_text(
+            (x_off, y_off),
+            text,
+            fontsize=min(w, h) * 0.07,
+            color=(0.75, 0.75, 0.75),
+            rotate=45,
+            overlay=True,
+        )
+
+doc.save(sys.argv[2])
+`.trim();
+  const sp = path.join(outputDir, "_watermark.py");
+  await fs.writeFile(sp, script, "utf-8");
+  try {
+    await execFileAsync(python3, [sp, inputPath, outputPath, text], { timeout: 120_000 });
+  } finally {
+    await fs.unlink(sp).catch(() => undefined);
+  }
+  const stat = await fs.stat(outputPath);
+  return { outputPath, resultFilename, fileSizeBytes: stat.size };
+}
+
+// ─── Unlock ───────────────────────────────────────────────────────────────────
+
+export async function unlockPdf(
+  inputPath: string,
+  outputDir: string,
+  resultFilename: string,
+  password: string,
+): Promise<PdfOpResult> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const outputPath = path.join(outputDir, resultFilename);
+  const python3 = await resolvePython();
+  const script = `
+import sys
+from pypdf import PdfReader, PdfWriter
+
+reader   = PdfReader(sys.argv[1])
+password = sys.argv[3]
+
+if reader.is_encrypted:
+    ok = reader.decrypt(password)
+    if not ok:
+        raise ValueError("Wrong password or unsupported encryption")
+
+writer = PdfWriter()
+for page in reader.pages:
+    writer.add_page(page)
+with open(sys.argv[2], "wb") as f:
+    writer.write(f)
+`.trim();
+  const sp = path.join(outputDir, "_unlock.py");
+  await fs.writeFile(sp, script, "utf-8");
+  try {
+    await execFileAsync(python3, [sp, inputPath, outputPath, password], { timeout: 120_000 });
+  } finally {
+    await fs.unlink(sp).catch(() => undefined);
+  }
+  const stat = await fs.stat(outputPath);
+  return { outputPath, resultFilename, fileSizeBytes: stat.size };
+}
+
+// ─── OCR ──────────────────────────────────────────────────────────────────────
+
+export async function ocrPdf(
+  inputPath: string,
+  outputDir: string,
+  resultFilename: string,
+): Promise<PdfOpResult> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const outputPath = path.join(outputDir, resultFilename);
+  // ocrmypdf CLI: adds invisible text layer to scanned PDFs
+  const ocrmypdf = await resolveOcrmypdf();
+  await execFileAsync(
+    ocrmypdf,
+    ["--skip-text", "--force-ocr", "--jobs", "2", inputPath, outputPath],
+    { timeout: 300_000 },
+  );
+  const stat = await fs.stat(outputPath);
+  logger.info({ outputPath, size: stat.size }, "OCR completed");
+  return { outputPath, resultFilename, fileSizeBytes: stat.size };
+}
+
+// ─── LibreOffice conversions ──────────────────────────────────────────────────
+
+const SOFFICE_PATH =
+  process.env.SOFFICE_PATH ||
+  "/nix/store/s77ki6j3if918jk373md4aajqii531rd-libreoffice-24.8.7.2-wrapped/bin/soffice";
+const LO_HOME = "/tmp/libreoffice-home";
+
+export async function libreOfficeConvert(
+  inputPath: string,
+  outputDir: string,
+  resultFilename: string,
+  targetExt: string,  // "pptx" | "xlsx" | "pdf"
+): Promise<PdfOpResult> {
+  await fs.mkdir(outputDir, { recursive: true });
+
+  // LO writes to same dir as input — use a dedicated temp dir to avoid conflicts
+  const tmpDir = path.join(outputDir, "_lo_tmp");
+  await fs.mkdir(tmpDir, { recursive: true });
+
+  const soffice = await resolveLibreOffice();
+
+  await execFileAsync(soffice, [
+    "--headless",
+    `--env:UserInstallation=file://${LO_HOME}`,
+    "--convert-to", targetExt,
+    "--outdir", tmpDir,
+    inputPath,
+  ], { timeout: 300_000 });
+
+  // LibreOffice names the output based on the input filename
+  const inputBase = path.basename(inputPath, path.extname(inputPath));
+  const loOutput = path.join(tmpDir, `${inputBase}.${targetExt}`);
+
+  const outputPath = path.join(outputDir, resultFilename);
+  await fs.rename(loOutput, outputPath);
+  await fs.rm(tmpDir, { recursive: true, force: true });
+
+  const stat = await fs.stat(outputPath);
+  logger.info({ outputPath, size: stat.size, targetExt }, "LibreOffice conversion done");
+  return { outputPath, resultFilename, fileSizeBytes: stat.size };
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
@@ -273,4 +528,38 @@ async function resolveGhostscript(): Promise<string> {
     } catch { /* try next */ }
   }
   throw new Error("Ghostscript not found.");
+}
+
+async function resolveOcrmypdf(): Promise<string> {
+  for (const bin of ["ocrmypdf"]) {
+    try {
+      const { stdout } = await execFileAsync("which", [bin]);
+      const found = stdout.trim();
+      if (found) return found;
+    } catch { /* try next */ }
+  }
+  // Try common user-install paths
+  const userBin = `${process.env.HOME}/.local/bin/ocrmypdf`;
+  try {
+    await fs.access(userBin);
+    return userBin;
+  } catch { /* not found */ }
+  throw new Error("ocrmypdf not found. Install with: pip install ocrmypdf");
+}
+
+async function resolveLibreOffice(): Promise<string> {
+  // Try the known Nix store path first
+  const nixPath = SOFFICE_PATH;
+  try {
+    await fs.access(nixPath);
+    return nixPath;
+  } catch { /* try PATH */ }
+  for (const bin of ["soffice", "libreoffice"]) {
+    try {
+      const { stdout } = await execFileAsync("which", [bin]);
+      const found = stdout.trim();
+      if (found) return found;
+    } catch { /* try next */ }
+  }
+  throw new Error("LibreOffice not found.");
 }

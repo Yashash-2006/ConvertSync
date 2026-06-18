@@ -1,21 +1,69 @@
 import { Link, useLocation } from "wouter";
-import { FileDown, History, FilePlus2, Scissors, Archive, Lock, ChevronDown } from "lucide-react";
+import {
+  FileDown, History, FilePlus2, Scissors, Archive, Lock, ChevronDown,
+  RotateCw, ImageIcon, ImagePlus, Stamp, LockOpen, ScanText,
+  Presentation, TableProperties,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 
-const PDF_TOOLS = [
-  { href: "/merge", label: "Merge PDFs", icon: FilePlus2, color: "text-primary" },
-  { href: "/split", label: "Split PDF", icon: Scissors, color: "text-orange-500" },
-  { href: "/compress", label: "Compress PDF", icon: Archive, color: "text-green-600" },
-  { href: "/protect", label: "Protect PDF", icon: Lock, color: "text-purple-600" },
+interface NavTool {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+}
+
+interface NavCategory {
+  heading: string;
+  tools: NavTool[];
+}
+
+const PDF_CATEGORIES: NavCategory[] = [
+  {
+    heading: "Organize",
+    tools: [
+      { href: "/merge",    label: "Merge PDFs",    icon: FilePlus2,   color: "text-primary" },
+      { href: "/split",    label: "Split PDF",     icon: Scissors,    color: "text-orange-500" },
+      { href: "/rotate",   label: "Rotate PDF",    icon: RotateCw,    color: "text-blue-500" },
+    ],
+  },
+  {
+    heading: "Convert",
+    tools: [
+      { href: "/pdf-to-jpg",   label: "PDF → JPG",        icon: ImageIcon,       color: "text-pink-500" },
+      { href: "/jpg-to-pdf",   label: "Images → PDF",     icon: ImagePlus,       color: "text-indigo-500" },
+      { href: "/pdf-to-pptx",  label: "PDF → PowerPoint", icon: Presentation,    color: "text-orange-500" },
+      { href: "/pptx-to-pdf",  label: "PowerPoint → PDF", icon: Presentation,    color: "text-red-500" },
+      { href: "/pdf-to-xlsx",  label: "PDF → Excel",      icon: TableProperties, color: "text-green-600" },
+      { href: "/xlsx-to-pdf",  label: "Excel → PDF",      icon: TableProperties, color: "text-emerald-600" },
+    ],
+  },
+  {
+    heading: "Optimize",
+    tools: [
+      { href: "/compress", label: "Compress PDF", icon: Archive,   color: "text-green-600" },
+      { href: "/ocr",      label: "OCR PDF",      icon: ScanText,  color: "text-teal-600" },
+    ],
+  },
+  {
+    heading: "Security",
+    tools: [
+      { href: "/protect",   label: "Protect PDF",   icon: Lock,     color: "text-purple-600" },
+      { href: "/unlock",    label: "Unlock PDF",    icon: LockOpen, color: "text-cyan-500" },
+      { href: "/watermark", label: "Watermark PDF", icon: Stamp,    color: "text-amber-500" },
+    ],
+  },
 ];
+
+const ALL_TOOLS: NavTool[] = PDF_CATEGORIES.flatMap((c) => c.tools);
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const isPdfTool = PDF_TOOLS.some((t) => location === t.href);
+  const isPdfTool = ALL_TOOLS.some((t) => location === t.href);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -39,7 +87,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="flex items-center gap-1">
-            {/* Converter */}
             <Link
               href="/"
               className={cn(
@@ -64,26 +111,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-52 rounded-lg border bg-card shadow-lg py-1 z-50">
-                  {PDF_TOOLS.map(({ href, label, icon: Icon, color }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setDropdownOpen(false)}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted transition-colors",
-                        location === href && "bg-muted font-medium",
-                      )}
-                    >
-                      <Icon className={cn("w-4 h-4 shrink-0", color)} />
-                      {label}
-                    </Link>
+                <div className="absolute right-0 top-full mt-1.5 w-60 rounded-lg border bg-card shadow-lg py-1.5 z-50 max-h-[80vh] overflow-y-auto">
+                  {PDF_CATEGORIES.map((cat, ci) => (
+                    <div key={cat.heading}>
+                      {ci > 0 && <div className="h-px bg-border mx-2 my-1" />}
+                      <p className="px-4 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {cat.heading}
+                      </p>
+                      {cat.tools.map(({ href, label, icon: Icon, color }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setDropdownOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-2 text-sm hover:bg-muted transition-colors",
+                            location === href && "bg-muted font-medium",
+                          )}
+                        >
+                          <Icon className={cn("w-4 h-4 shrink-0", color)} />
+                          {label}
+                        </Link>
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* History */}
             <Link
               href="/history"
               className={cn(

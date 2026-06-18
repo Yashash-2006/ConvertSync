@@ -57,7 +57,7 @@ export default function Protect() {
     setResultId(null);
     setResultFilename(null);
     try {
-      const result = await protectPdf.mutateAsync({ file, password });
+      const result = await protectPdf.mutateAsync({ data: { file, password } });
       setResultId(result.id);
       setResultFilename(result.resultFilename ?? "protected.pdf");
       setStatus("done");

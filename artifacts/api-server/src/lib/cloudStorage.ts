@@ -19,6 +19,9 @@ function parseBucketPath(fullPath: string): { bucketName: string; objectName: st
 function contentTypeForFormat(format: string): string {
   if (format === "pdf") return "application/pdf";
   if (format === "zip") return "application/zip";
+  if (format === "pptx") return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (format === "xlsx") return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (format === "jpg" || format === "jpeg") return "image/jpeg";
   return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 }
 

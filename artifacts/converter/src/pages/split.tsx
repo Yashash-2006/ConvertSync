@@ -57,7 +57,7 @@ export default function Split() {
     try {
       const body: { file: File; pageRanges?: string } = { file };
       if (mode === "ranges" && pageRanges.trim()) body.pageRanges = pageRanges.trim();
-      const result = await splitPdf.mutateAsync(body);
+      const result = await splitPdf.mutateAsync({ data: body });
       setResultId(result.id);
       setResultFilename(result.resultFilename ?? "split.zip");
       setStatus("done");

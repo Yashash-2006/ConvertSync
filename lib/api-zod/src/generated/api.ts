@@ -96,7 +96,7 @@ export const DeleteConversionParams = zod.object({
  */
 export const ListPdfOperationsResponseItem = zod.object({
   "id": zod.number(),
-  "operationType": zod.enum(['merge', 'split', 'compress', 'protect']),
+  "operationType": zod.enum(['merge', 'split', 'compress', 'protect', 'rotate', 'pdf-to-jpg', 'jpg-to-pdf', 'watermark', 'unlock', 'ocr', 'pdf-to-pptx', 'pdf-to-xlsx', 'pptx-to-pdf', 'xlsx-to-pdf']),
   "status": zod.enum(['pending', 'completed', 'failed']),
   "errorMessage": zod.string().nullish(),
   "originalFilenames": zod.array(zod.string()),
@@ -149,6 +149,93 @@ export const ProtectPdfBody = zod.object({
 
 
 /**
+ * @summary Rotate all pages in a PDF
+ */
+export const RotatePdfBody = zod.object({
+  "file": zod.instanceof(File),
+  "angle": zod.enum(['90', '180', '270']).optional().describe('Rotation angle in degrees (clockwise)')
+})
+
+
+/**
+ * @summary Convert PDF pages to JPG images (returned as ZIP)
+ */
+export const PdfToJpgBody = zod.object({
+  "file": zod.instanceof(File),
+  "dpi": zod.string().optional().describe('Resolution (default: 150)')
+})
+
+
+/**
+ * @summary Convert images to a single PDF
+ */
+export const JpgToPdfBody = zod.object({
+  "files": zod.array(zod.instanceof(File)).describe('One or more image files (JPG, PNG)')
+})
+
+
+/**
+ * @summary Add a diagonal text watermark to each page
+ */
+
+
+
+export const WatermarkPdfBody = zod.object({
+  "file": zod.instanceof(File),
+  "text": zod.string().min(1).describe('Watermark text to stamp diagonally across each page')
+})
+
+
+/**
+ * @summary Remove password protection from a PDF
+ */
+export const UnlockPdfBody = zod.object({
+  "file": zod.instanceof(File),
+  "password": zod.string().describe('Password to decrypt the PDF')
+})
+
+
+/**
+ * @summary Run OCR to make a scanned PDF searchable
+ */
+export const OcrPdfBody = zod.object({
+  "file": zod.instanceof(File).describe('PDF file to make searchable with OCR')
+})
+
+
+/**
+ * @summary Convert PDF to PowerPoint (.pptx)
+ */
+export const PdfToPptxBody = zod.object({
+  "file": zod.instanceof(File).describe('Input file for conversion')
+})
+
+
+/**
+ * @summary Convert PDF to Excel (.xlsx)
+ */
+export const PdfToXlsxBody = zod.object({
+  "file": zod.instanceof(File).describe('Input file for conversion')
+})
+
+
+/**
+ * @summary Convert PowerPoint to PDF
+ */
+export const PptxToPdfBody = zod.object({
+  "file": zod.instanceof(File).describe('Input file for conversion')
+})
+
+
+/**
+ * @summary Convert Excel to PDF
+ */
+export const XlsxToPdfBody = zod.object({
+  "file": zod.instanceof(File).describe('Input file for conversion')
+})
+
+
+/**
  * @summary Get a single PDF operation
  */
 export const GetPdfOperationParams = zod.object({
@@ -157,7 +244,7 @@ export const GetPdfOperationParams = zod.object({
 
 export const GetPdfOperationResponse = zod.object({
   "id": zod.number(),
-  "operationType": zod.enum(['merge', 'split', 'compress', 'protect']),
+  "operationType": zod.enum(['merge', 'split', 'compress', 'protect', 'rotate', 'pdf-to-jpg', 'jpg-to-pdf', 'watermark', 'unlock', 'ocr', 'pdf-to-pptx', 'pdf-to-xlsx', 'pptx-to-pdf', 'xlsx-to-pdf']),
   "status": zod.enum(['pending', 'completed', 'failed']),
   "errorMessage": zod.string().nullish(),
   "originalFilenames": zod.array(zod.string()),

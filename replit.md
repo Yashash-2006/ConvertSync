@@ -1,6 +1,6 @@
-# [Project name]
+# ConvertSync
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A full-featured document conversion and PDF tools web app — Word↔PDF, plus 14 PDF operations (merge, split, compress, protect, rotate, PDF↔JPG, watermark, unlock, OCR, PDF↔PPTX, PDF↔XLSX).
 
 ## Run & Operate
 

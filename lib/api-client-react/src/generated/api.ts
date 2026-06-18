@@ -26,12 +26,19 @@ import type {
   ConversionStats,
   ErrorResponse,
   HealthStatus,
+  JpgToPdfInput,
   MergePdfInput,
+  OcrPdfInput,
   PdfOperation,
+  PdfToJpgInput,
   ProtectPdfInput,
+  RotatePdfInput,
+  SinglePdfInput,
   SplitPdfInput,
+  UnlockPdfInput,
   UploadUrlRequest,
-  UploadUrlResponse
+  UploadUrlResponse,
+  WatermarkPdfInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -876,6 +883,744 @@ export const useProtectPdf = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getProtectPdfMutationOptions(options));
+    }
+
+export const getRotatePdfUrl = () => {
+
+
+
+
+  return `/api/pdf/rotate`
+}
+
+/**
+ * @summary Rotate all pages in a PDF
+ */
+export const rotatePdf = async (rotatePdfInput: RotatePdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, rotatePdfInput.file);
+if(rotatePdfInput.angle !== undefined) {
+ formData.append(`angle`, rotatePdfInput.angle);
+ }
+
+  return customFetch<PdfOperation>(getRotatePdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getRotatePdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotatePdf>>, TError,{data: BodyType<RotatePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rotatePdf>>, TError,{data: BodyType<RotatePdfInput>}, TContext> => {
+
+const mutationKey = ['rotatePdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rotatePdf>>, {data: BodyType<RotatePdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  rotatePdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RotatePdfMutationResult = NonNullable<Awaited<ReturnType<typeof rotatePdf>>>
+    export type RotatePdfMutationBody = BodyType<RotatePdfInput>
+    export type RotatePdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Rotate all pages in a PDF
+ */
+export const useRotatePdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rotatePdf>>, TError,{data: BodyType<RotatePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rotatePdf>>,
+        TError,
+        {data: BodyType<RotatePdfInput>},
+        TContext
+      > => {
+      return useMutation(getRotatePdfMutationOptions(options));
+    }
+
+export const getPdfToJpgUrl = () => {
+
+
+
+
+  return `/api/pdf/pdf-to-jpg`
+}
+
+/**
+ * @summary Convert PDF pages to JPG images (returned as ZIP)
+ */
+export const pdfToJpg = async (pdfToJpgInput: PdfToJpgInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, pdfToJpgInput.file);
+if(pdfToJpgInput.dpi !== undefined) {
+ formData.append(`dpi`, pdfToJpgInput.dpi);
+ }
+
+  return customFetch<PdfOperation>(getPdfToJpgUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getPdfToJpgMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pdfToJpg>>, TError,{data: BodyType<PdfToJpgInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pdfToJpg>>, TError,{data: BodyType<PdfToJpgInput>}, TContext> => {
+
+const mutationKey = ['pdfToJpg'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pdfToJpg>>, {data: BodyType<PdfToJpgInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  pdfToJpg(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PdfToJpgMutationResult = NonNullable<Awaited<ReturnType<typeof pdfToJpg>>>
+    export type PdfToJpgMutationBody = BodyType<PdfToJpgInput>
+    export type PdfToJpgMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Convert PDF pages to JPG images (returned as ZIP)
+ */
+export const usePdfToJpg = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pdfToJpg>>, TError,{data: BodyType<PdfToJpgInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pdfToJpg>>,
+        TError,
+        {data: BodyType<PdfToJpgInput>},
+        TContext
+      > => {
+      return useMutation(getPdfToJpgMutationOptions(options));
+    }
+
+export const getJpgToPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/jpg-to-pdf`
+}
+
+/**
+ * @summary Convert images to a single PDF
+ */
+export const jpgToPdf = async (jpgToPdfInput: JpgToPdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+jpgToPdfInput.files.forEach(value => formData.append(`files`, value));
+
+  return customFetch<PdfOperation>(getJpgToPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getJpgToPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof jpgToPdf>>, TError,{data: BodyType<JpgToPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof jpgToPdf>>, TError,{data: BodyType<JpgToPdfInput>}, TContext> => {
+
+const mutationKey = ['jpgToPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof jpgToPdf>>, {data: BodyType<JpgToPdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  jpgToPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type JpgToPdfMutationResult = NonNullable<Awaited<ReturnType<typeof jpgToPdf>>>
+    export type JpgToPdfMutationBody = BodyType<JpgToPdfInput>
+    export type JpgToPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Convert images to a single PDF
+ */
+export const useJpgToPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof jpgToPdf>>, TError,{data: BodyType<JpgToPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof jpgToPdf>>,
+        TError,
+        {data: BodyType<JpgToPdfInput>},
+        TContext
+      > => {
+      return useMutation(getJpgToPdfMutationOptions(options));
+    }
+
+export const getWatermarkPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/watermark`
+}
+
+/**
+ * @summary Add a diagonal text watermark to each page
+ */
+export const watermarkPdf = async (watermarkPdfInput: WatermarkPdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, watermarkPdfInput.file);
+formData.append(`text`, watermarkPdfInput.text);
+
+  return customFetch<PdfOperation>(getWatermarkPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getWatermarkPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof watermarkPdf>>, TError,{data: BodyType<WatermarkPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof watermarkPdf>>, TError,{data: BodyType<WatermarkPdfInput>}, TContext> => {
+
+const mutationKey = ['watermarkPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof watermarkPdf>>, {data: BodyType<WatermarkPdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  watermarkPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WatermarkPdfMutationResult = NonNullable<Awaited<ReturnType<typeof watermarkPdf>>>
+    export type WatermarkPdfMutationBody = BodyType<WatermarkPdfInput>
+    export type WatermarkPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Add a diagonal text watermark to each page
+ */
+export const useWatermarkPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof watermarkPdf>>, TError,{data: BodyType<WatermarkPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof watermarkPdf>>,
+        TError,
+        {data: BodyType<WatermarkPdfInput>},
+        TContext
+      > => {
+      return useMutation(getWatermarkPdfMutationOptions(options));
+    }
+
+export const getUnlockPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/unlock`
+}
+
+/**
+ * @summary Remove password protection from a PDF
+ */
+export const unlockPdf = async (unlockPdfInput: UnlockPdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, unlockPdfInput.file);
+formData.append(`password`, unlockPdfInput.password);
+
+  return customFetch<PdfOperation>(getUnlockPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getUnlockPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockPdf>>, TError,{data: BodyType<UnlockPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlockPdf>>, TError,{data: BodyType<UnlockPdfInput>}, TContext> => {
+
+const mutationKey = ['unlockPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlockPdf>>, {data: BodyType<UnlockPdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  unlockPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlockPdfMutationResult = NonNullable<Awaited<ReturnType<typeof unlockPdf>>>
+    export type UnlockPdfMutationBody = BodyType<UnlockPdfInput>
+    export type UnlockPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Remove password protection from a PDF
+ */
+export const useUnlockPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlockPdf>>, TError,{data: BodyType<UnlockPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlockPdf>>,
+        TError,
+        {data: BodyType<UnlockPdfInput>},
+        TContext
+      > => {
+      return useMutation(getUnlockPdfMutationOptions(options));
+    }
+
+export const getOcrPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/ocr`
+}
+
+/**
+ * @summary Run OCR to make a scanned PDF searchable
+ */
+export const ocrPdf = async (ocrPdfInput: OcrPdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, ocrPdfInput.file);
+
+  return customFetch<PdfOperation>(getOcrPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getOcrPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ocrPdf>>, TError,{data: BodyType<OcrPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ocrPdf>>, TError,{data: BodyType<OcrPdfInput>}, TContext> => {
+
+const mutationKey = ['ocrPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ocrPdf>>, {data: BodyType<OcrPdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  ocrPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OcrPdfMutationResult = NonNullable<Awaited<ReturnType<typeof ocrPdf>>>
+    export type OcrPdfMutationBody = BodyType<OcrPdfInput>
+    export type OcrPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Run OCR to make a scanned PDF searchable
+ */
+export const useOcrPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ocrPdf>>, TError,{data: BodyType<OcrPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ocrPdf>>,
+        TError,
+        {data: BodyType<OcrPdfInput>},
+        TContext
+      > => {
+      return useMutation(getOcrPdfMutationOptions(options));
+    }
+
+export const getPdfToPptxUrl = () => {
+
+
+
+
+  return `/api/pdf/pdf-to-pptx`
+}
+
+/**
+ * @summary Convert PDF to PowerPoint (.pptx)
+ */
+export const pdfToPptx = async (singlePdfInput: SinglePdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, singlePdfInput.file);
+
+  return customFetch<PdfOperation>(getPdfToPptxUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getPdfToPptxMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pdfToPptx>>, TError,{data: BodyType<SinglePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pdfToPptx>>, TError,{data: BodyType<SinglePdfInput>}, TContext> => {
+
+const mutationKey = ['pdfToPptx'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pdfToPptx>>, {data: BodyType<SinglePdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  pdfToPptx(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PdfToPptxMutationResult = NonNullable<Awaited<ReturnType<typeof pdfToPptx>>>
+    export type PdfToPptxMutationBody = BodyType<SinglePdfInput>
+    export type PdfToPptxMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Convert PDF to PowerPoint (.pptx)
+ */
+export const usePdfToPptx = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pdfToPptx>>, TError,{data: BodyType<SinglePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pdfToPptx>>,
+        TError,
+        {data: BodyType<SinglePdfInput>},
+        TContext
+      > => {
+      return useMutation(getPdfToPptxMutationOptions(options));
+    }
+
+export const getPdfToXlsxUrl = () => {
+
+
+
+
+  return `/api/pdf/pdf-to-xlsx`
+}
+
+/**
+ * @summary Convert PDF to Excel (.xlsx)
+ */
+export const pdfToXlsx = async (singlePdfInput: SinglePdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, singlePdfInput.file);
+
+  return customFetch<PdfOperation>(getPdfToXlsxUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getPdfToXlsxMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pdfToXlsx>>, TError,{data: BodyType<SinglePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pdfToXlsx>>, TError,{data: BodyType<SinglePdfInput>}, TContext> => {
+
+const mutationKey = ['pdfToXlsx'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pdfToXlsx>>, {data: BodyType<SinglePdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  pdfToXlsx(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PdfToXlsxMutationResult = NonNullable<Awaited<ReturnType<typeof pdfToXlsx>>>
+    export type PdfToXlsxMutationBody = BodyType<SinglePdfInput>
+    export type PdfToXlsxMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Convert PDF to Excel (.xlsx)
+ */
+export const usePdfToXlsx = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pdfToXlsx>>, TError,{data: BodyType<SinglePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pdfToXlsx>>,
+        TError,
+        {data: BodyType<SinglePdfInput>},
+        TContext
+      > => {
+      return useMutation(getPdfToXlsxMutationOptions(options));
+    }
+
+export const getPptxToPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/pptx-to-pdf`
+}
+
+/**
+ * @summary Convert PowerPoint to PDF
+ */
+export const pptxToPdf = async (singlePdfInput: SinglePdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, singlePdfInput.file);
+
+  return customFetch<PdfOperation>(getPptxToPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getPptxToPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pptxToPdf>>, TError,{data: BodyType<SinglePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pptxToPdf>>, TError,{data: BodyType<SinglePdfInput>}, TContext> => {
+
+const mutationKey = ['pptxToPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pptxToPdf>>, {data: BodyType<SinglePdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  pptxToPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PptxToPdfMutationResult = NonNullable<Awaited<ReturnType<typeof pptxToPdf>>>
+    export type PptxToPdfMutationBody = BodyType<SinglePdfInput>
+    export type PptxToPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Convert PowerPoint to PDF
+ */
+export const usePptxToPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pptxToPdf>>, TError,{data: BodyType<SinglePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pptxToPdf>>,
+        TError,
+        {data: BodyType<SinglePdfInput>},
+        TContext
+      > => {
+      return useMutation(getPptxToPdfMutationOptions(options));
+    }
+
+export const getXlsxToPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/xlsx-to-pdf`
+}
+
+/**
+ * @summary Convert Excel to PDF
+ */
+export const xlsxToPdf = async (singlePdfInput: SinglePdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, singlePdfInput.file);
+
+  return customFetch<PdfOperation>(getXlsxToPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getXlsxToPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof xlsxToPdf>>, TError,{data: BodyType<SinglePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof xlsxToPdf>>, TError,{data: BodyType<SinglePdfInput>}, TContext> => {
+
+const mutationKey = ['xlsxToPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof xlsxToPdf>>, {data: BodyType<SinglePdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  xlsxToPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type XlsxToPdfMutationResult = NonNullable<Awaited<ReturnType<typeof xlsxToPdf>>>
+    export type XlsxToPdfMutationBody = BodyType<SinglePdfInput>
+    export type XlsxToPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Convert Excel to PDF
+ */
+export const useXlsxToPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof xlsxToPdf>>, TError,{data: BodyType<SinglePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof xlsxToPdf>>,
+        TError,
+        {data: BodyType<SinglePdfInput>},
+        TContext
+      > => {
+      return useMutation(getXlsxToPdfMutationOptions(options));
     }
 
 export const getGetPdfOperationUrl = (id: number,) => {

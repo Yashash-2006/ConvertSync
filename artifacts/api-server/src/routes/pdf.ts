@@ -4,7 +4,10 @@ import path from "path";
 import fs from "fs/promises";
 import { eq, desc } from "drizzle-orm";
 import { db, pdfOperationsTable } from "@workspace/db";
-import { mergePdfs, splitPdf, compressPdf, protectPdf } from "../lib/pdf-ops";
+import {
+  mergePdfs, splitPdf, compressPdf, protectPdf,
+  rotatePdf, pdfToJpg, jpgToPdf, watermarkPdf, unlockPdf, ocrPdf, libreOfficeConvert,
+} from "../lib/pdf-ops";
 import { uploadConvertedFile, streamCloudFile, deleteCloudFile } from "../lib/cloudStorage";
 import { logger } from "../lib/logger";
 
@@ -23,11 +26,28 @@ const upload = multer({
   limits: { fileSize: MAX_FILE_SIZE },
   fileFilter(_req, file, cb) {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ext === ".pdf") {
-      cb(null, true);
-    } else {
-      cb(new Error("Only PDF files are supported"));
-    }
+    if (ext === ".pdf") cb(null, true);
+    else cb(new Error("Only PDF files are supported"));
+  },
+});
+
+const uploadImage = multer({
+  dest: UPLOADS_DIR,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter(_req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if ([".jpg", ".jpeg", ".png", ".webp"].includes(ext)) cb(null, true);
+    else cb(new Error("Only image files are supported (JPG, PNG, WebP)"));
+  },
+});
+
+const uploadOffice = multer({
+  dest: UPLOADS_DIR,
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter(_req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if ([".pptx", ".ppt", ".xlsx", ".xls", ".odp", ".ods"].includes(ext)) cb(null, true);
+    else cb(new Error("Only Office files are supported (PPTX, XLSX, etc.)"));
   },
 });
 
@@ -289,6 +309,201 @@ router.post("/pdf/protect", upload.single("file"), async (req, res): Promise<voi
   res.status(201).json(toResponse(fresh[0]));
 });
 
+// ─── Shared async processor ────────────────────────────────────────────────
+
+async function runOp(
+  opId: number,
+  inputPaths: string[],
+  opDir: string,
+  resultFilename: string,
+  cloudFormat: string,
+  fn: () => Promise<{ outputPath: string; fileSizeBytes: number }>,
+) {
+  try {
+    const { outputPath, fileSizeBytes } = await fn();
+    let cloudObjectPath: string | null = null;
+    try {
+      cloudObjectPath = await uploadConvertedFile(outputPath, cloudFormat);
+    } catch (e) {
+      logger.warn({ err: e, opId }, "Cloud upload failed; keeping local");
+    }
+    await db.update(pdfOperationsTable).set({
+      status: "completed",
+      resultFilename,
+      resultFileSizeBytes: fileSizeBytes,
+      cloudObjectPath,
+      completedAt: new Date(),
+    }).where(eqId(opId));
+  } catch (err) {
+    logger.error({ err, opId }, "PDF op failed");
+    await db.update(pdfOperationsTable).set({ status: "failed", errorMessage: String(err) }).where(eqId(opId));
+  } finally {
+    await Promise.all(inputPaths.map(safeUnlink));
+  }
+}
+
+async function createOpRecord(
+  operationType: typeof pdfOperationsTable.$inferInsert["operationType"],
+  filenames: string[],
+  fileSizeBytes: number,
+) {
+  const rows = await db.insert(pdfOperationsTable).values({
+    operationType,
+    status: "pending",
+    originalFilenames: JSON.stringify(filenames),
+    fileSizeBytes,
+  }).returning();
+  return rows[0];
+}
+
+// ─── Rotate ────────────────────────────────────────────────────────────────
+
+router.post("/pdf/rotate", upload.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const rawAngle = (req.body as { angle?: string }).angle ?? "90";
+  const angle = ([90, 180, 270] as const).includes(Number(rawAngle) as 90 | 180 | 270)
+    ? (Number(rawAngle) as 90 | 180 | 270)
+    : 90;
+  const op = await createOpRecord("rotate", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, ".pdf");
+  const resultFilename = `rotated_${op.id}_${base}.pdf`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "pdf",
+    () => rotatePdf(file.path, opDir, resultFilename, angle)))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── PDF → JPG ─────────────────────────────────────────────────────────────
+
+router.post("/pdf/pdf-to-jpg", upload.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const dpi = Math.min(300, Math.max(72, Number((req.body as { dpi?: string }).dpi ?? "150") || 150));
+  const op = await createOpRecord("pdf-to-jpg", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, ".pdf");
+  const resultFilename = `pages_${op.id}_${base}.zip`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "zip",
+    () => pdfToJpg(file.path, opDir, resultFilename, dpi)))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── JPG → PDF ─────────────────────────────────────────────────────────────
+
+router.post("/pdf/jpg-to-pdf", uploadImage.array("files"), async (req, res): Promise<void> => {
+  const files = req.files as Express.Multer.File[] | undefined;
+  if (!files || files.length === 0) { res.status(400).json({ error: "No image files uploaded" }); return; }
+  const op = await createOpRecord("jpg-to-pdf", files.map((f) => f.originalname), files.reduce((s, f) => s + f.size, 0));
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const resultFilename = `images_${op.id}.pdf`;
+  (async () => runOp(op.id, files.map((f) => f.path), opDir, resultFilename, "pdf",
+    () => jpgToPdf(files.map((f) => f.path), opDir, resultFilename)))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── Watermark ─────────────────────────────────────────────────────────────
+
+router.post("/pdf/watermark", upload.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const text = ((req.body as { text?: string }).text ?? "").trim();
+  if (!text) { await safeUnlink(file.path); res.status(400).json({ error: "Watermark text is required" }); return; }
+  const op = await createOpRecord("watermark", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, ".pdf");
+  const resultFilename = `watermarked_${op.id}_${base}.pdf`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "pdf",
+    () => watermarkPdf(file.path, opDir, resultFilename, text)))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── Unlock ────────────────────────────────────────────────────────────────
+
+router.post("/pdf/unlock", upload.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const password = ((req.body as { password?: string }).password ?? "").trim();
+  if (!password) { await safeUnlink(file.path); res.status(400).json({ error: "Password is required" }); return; }
+  const op = await createOpRecord("unlock", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, ".pdf");
+  const resultFilename = `unlocked_${op.id}_${base}.pdf`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "pdf",
+    () => unlockPdf(file.path, opDir, resultFilename, password)))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── OCR ───────────────────────────────────────────────────────────────────
+
+router.post("/pdf/ocr", upload.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const op = await createOpRecord("ocr", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, ".pdf");
+  const resultFilename = `ocr_${op.id}_${base}.pdf`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "pdf",
+    () => ocrPdf(file.path, opDir, resultFilename)))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── PDF → PPTX ────────────────────────────────────────────────────────────
+
+router.post("/pdf/pdf-to-pptx", upload.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const op = await createOpRecord("pdf-to-pptx", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, ".pdf");
+  const resultFilename = `${base}_${op.id}.pptx`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "pptx",
+    () => libreOfficeConvert(file.path, opDir, resultFilename, "pptx")))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── PDF → XLSX ────────────────────────────────────────────────────────────
+
+router.post("/pdf/pdf-to-xlsx", upload.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const op = await createOpRecord("pdf-to-xlsx", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, ".pdf");
+  const resultFilename = `${base}_${op.id}.xlsx`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "xlsx",
+    () => libreOfficeConvert(file.path, opDir, resultFilename, "xlsx")))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── PPTX → PDF ────────────────────────────────────────────────────────────
+
+router.post("/pdf/pptx-to-pdf", uploadOffice.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const op = await createOpRecord("pptx-to-pdf", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, path.extname(file.originalname));
+  const resultFilename = `${base}_${op.id}.pdf`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "pdf",
+    () => libreOfficeConvert(file.path, opDir, resultFilename, "pdf")))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
+// ─── XLSX → PDF ────────────────────────────────────────────────────────────
+
+router.post("/pdf/xlsx-to-pdf", uploadOffice.single("file"), async (req, res): Promise<void> => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  const op = await createOpRecord("xlsx-to-pdf", [file.originalname], file.size);
+  const opDir = path.join(PDF_OPS_DIR, String(op.id));
+  const base = path.basename(file.originalname, path.extname(file.originalname));
+  const resultFilename = `${base}_${op.id}.pdf`;
+  (async () => runOp(op.id, [file.path], opDir, resultFilename, "pdf",
+    () => libreOfficeConvert(file.path, opDir, resultFilename, "pdf")))();
+  res.status(201).json(toResponse((await db.select().from(pdfOperationsTable).where(eqId(op.id)))[0]));
+});
+
 // ─── Get / Delete ──────────────────────────────────────────────────────────
 
 router.get("/pdf/:id", async (req, res): Promise<void> => {
@@ -325,6 +540,10 @@ router.get("/pdf/:id/download", async (req, res): Promise<void> => {
   const filename = op.resultFilename;
   const contentType = filename.endsWith(".zip")
     ? "application/zip"
+    : filename.endsWith(".pptx") || filename.endsWith(".ppt")
+    ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    : filename.endsWith(".xlsx") || filename.endsWith(".xls")
+    ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     : "application/pdf";
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.setHeader("Content-Type", contentType);

@@ -242,6 +242,256 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pdf/rotate:
+    post:
+      operationId: rotatePdf
+      tags: [pdf]
+      summary: Rotate all pages in a PDF
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/RotatePdfInput"
+      responses:
+        "201":
+          description: Rotate operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/pdf-to-jpg:
+    post:
+      operationId: pdfToJpg
+      tags: [pdf]
+      summary: Convert PDF pages to JPG images (returned as ZIP)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PdfToJpgInput"
+      responses:
+        "201":
+          description: PDF to JPG operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/jpg-to-pdf:
+    post:
+      operationId: jpgToPdf
+      tags: [pdf]
+      summary: Convert images to a single PDF
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/JpgToPdfInput"
+      responses:
+        "201":
+          description: JPG to PDF operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/watermark:
+    post:
+      operationId: watermarkPdf
+      tags: [pdf]
+      summary: Add a diagonal text watermark to each page
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/WatermarkPdfInput"
+      responses:
+        "201":
+          description: Watermark operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/unlock:
+    post:
+      operationId: unlockPdf
+      tags: [pdf]
+      summary: Remove password protection from a PDF
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/UnlockPdfInput"
+      responses:
+        "201":
+          description: Unlock operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/ocr:
+    post:
+      operationId: ocrPdf
+      tags: [pdf]
+      summary: Run OCR to make a scanned PDF searchable
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/OcrPdfInput"
+      responses:
+        "201":
+          description: OCR operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/pdf-to-pptx:
+    post:
+      operationId: pdfToPptx
+      tags: [pdf]
+      summary: Convert PDF to PowerPoint (.pptx)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SinglePdfInput"
+      responses:
+        "201":
+          description: PDF to PPTX operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/pdf-to-xlsx:
+    post:
+      operationId: pdfToXlsx
+      tags: [pdf]
+      summary: Convert PDF to Excel (.xlsx)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SinglePdfInput"
+      responses:
+        "201":
+          description: PDF to XLSX operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/pptx-to-pdf:
+    post:
+      operationId: pptxToPdf
+      tags: [pdf]
+      summary: Convert PowerPoint to PDF
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SinglePdfInput"
+      responses:
+        "201":
+          description: PPTX to PDF operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/xlsx-to-pdf:
+    post:
+      operationId: xlsxToPdf
+      tags: [pdf]
+      summary: Convert Excel to PDF
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SinglePdfInput"
+      responses:
+        "201":
+          description: XLSX to PDF operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /pdf/{id}:
     get:
       operationId: getPdfOperation
@@ -448,7 +698,7 @@ components:
           type: integer
         operationType:
           type: string
-          enum: [merge, split, compress, protect]
+          enum: [merge, split, compress, protect, rotate, pdf-to-jpg, jpg-to-pdf, watermark, unlock, ocr, pdf-to-pptx, pdf-to-xlsx, pptx-to-pdf, xlsx-to-pdf]
         status:
           type: string
           enum: [pending, completed, failed]
@@ -521,6 +771,81 @@ components:
           type: string
           minLength: 1
           description: Password to set on the PDF
+
+    RotatePdfInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+        angle:
+          type: string
+          enum: ["90", "180", "270"]
+          description: Rotation angle in degrees (clockwise)
+
+    PdfToJpgInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+        dpi:
+          type: string
+          description: "Resolution (default: 150)"
+
+    JpgToPdfInput:
+      type: object
+      required: [files]
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: One or more image files (JPG, PNG)
+
+    WatermarkPdfInput:
+      type: object
+      required: [file, text]
+      properties:
+        file:
+          type: string
+          format: binary
+        text:
+          type: string
+          minLength: 1
+          description: Watermark text to stamp diagonally across each page
+
+    UnlockPdfInput:
+      type: object
+      required: [file, password]
+      properties:
+        file:
+          type: string
+          format: binary
+        password:
+          type: string
+          description: Password to decrypt the PDF
+
+    OcrPdfInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: PDF file to make searchable with OCR
+
+    SinglePdfInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Input file for conversion
 
     UploadUrlRequest:
       type: object

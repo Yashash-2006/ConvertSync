@@ -61,7 +61,7 @@ export default function Compress() {
     setResultFilename(null);
     setResultSize(null);
     try {
-      const result = await compressPdf.mutateAsync({ file, level });
+      const result = await compressPdf.mutateAsync({ data: { file, level } });
       setResultId(result.id);
       setResultFilename(result.resultFilename ?? "compressed.pdf");
       setResultSize(result.resultFileSizeBytes ?? null);

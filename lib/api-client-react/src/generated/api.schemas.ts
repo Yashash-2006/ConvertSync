@@ -74,6 +74,16 @@ export const PdfOperationOperationType = {
   split: 'split',
   compress: 'compress',
   protect: 'protect',
+  rotate: 'rotate',
+  'pdf-to-jpg': 'pdf-to-jpg',
+  'jpg-to-pdf': 'jpg-to-pdf',
+  watermark: 'watermark',
+  unlock: 'unlock',
+  ocr: 'ocr',
+  'pdf-to-pptx': 'pdf-to-pptx',
+  'pdf-to-xlsx': 'pdf-to-xlsx',
+  'pptx-to-pdf': 'pptx-to-pdf',
+  'xlsx-to-pdf': 'xlsx-to-pdf',
 } as const;
 
 export type PdfOperationStatus = typeof PdfOperationStatus[keyof typeof PdfOperationStatus];
@@ -144,6 +154,60 @@ export interface ProtectPdfInput {
      * @minLength 1
      */
   password: string;
+}
+
+/**
+ * Rotation angle in degrees (clockwise)
+ */
+export type RotatePdfInputAngle = typeof RotatePdfInputAngle[keyof typeof RotatePdfInputAngle];
+
+
+export const RotatePdfInputAngle = {
+  NUMBER_90: '90',
+  NUMBER_180: '180',
+  NUMBER_270: '270',
+} as const;
+
+export interface RotatePdfInput {
+  file: Blob;
+  /** Rotation angle in degrees (clockwise) */
+  angle?: RotatePdfInputAngle;
+}
+
+export interface PdfToJpgInput {
+  file: Blob;
+  /** Resolution (default: 150) */
+  dpi?: string;
+}
+
+export interface JpgToPdfInput {
+  /** One or more image files (JPG, PNG) */
+  files: Blob[];
+}
+
+export interface WatermarkPdfInput {
+  file: Blob;
+  /**
+     * Watermark text to stamp diagonally across each page
+     * @minLength 1
+     */
+  text: string;
+}
+
+export interface UnlockPdfInput {
+  file: Blob;
+  /** Password to decrypt the PDF */
+  password: string;
+}
+
+export interface OcrPdfInput {
+  /** PDF file to make searchable with OCR */
+  file: Blob;
+}
+
+export interface SinglePdfInput {
+  /** Input file for conversion */
+  file: Blob;
 }
 
 export interface UploadUrlRequest {

@@ -58,7 +58,7 @@ export default function Merge() {
     setResultId(null);
     setResultFilename(null);
     try {
-      const result = await mergePdfs.mutateAsync({ files: files.map((f) => f.file) });
+      const result = await mergePdfs.mutateAsync({ data: { files: files.map((f) => f.file) } });
       setResultId(result.id);
       setResultFilename(result.resultFilename ?? "merged.pdf");
       setStatus("done");
