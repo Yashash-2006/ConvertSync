@@ -4,11 +4,9 @@ import path from "path";
 import fs from "fs/promises";
 import { eq, desc, count, sql } from "drizzle-orm";
 import { db, conversionsTable } from "@workspace/db";
-import {
-  GetConversionParams,
-  DeleteConversionParams,
-} from "@workspace/api-zod";
+import { GetConversionParams, DeleteConversionParams } from "@workspace/api-zod";
 import { convertFile } from "../lib/converter";
+import { uploadConvertedFile, streamCloudFile, deleteCloudFile } from "../lib/cloudStorage";
 
 const router: IRouter = Router();
 
@@ -74,7 +72,6 @@ router.post("/conversions", upload.single("file"), async (req, res): Promise<voi
     .returning();
 
   const outputDir = path.join(OUTPUTS_DIR, String(conversion.id));
-
   let renamedPath: string | null = null;
 
   try {
@@ -85,11 +82,20 @@ router.post("/conversions", upload.single("file"), async (req, res): Promise<voi
 
     const result = await convertFile(renamedPath, targetFormat, outputDir);
 
+    // Upload converted file to cloud storage
+    let cloudObjectPath: string | null = null;
+    try {
+      cloudObjectPath = await uploadConvertedFile(result.outputPath, targetFormat);
+    } catch (cloudErr) {
+      req.log.warn({ err: cloudErr }, "Cloud upload failed, file remains on disk");
+    }
+
     const [updated] = await db
       .update(conversionsTable)
       .set({
         status: "completed",
         convertedFileSizeBytes: result.fileSizeBytes,
+        cloudObjectPath,
         completedAt: new Date(),
       })
       .where(eq(conversionsTable.id, conversion.id))
@@ -109,6 +115,7 @@ router.post("/conversions", upload.single("file"), async (req, res): Promise<voi
     res.status(201).json(toResponse(updated));
   } finally {
     if (renamedPath) await safeUnlink(renamedPath);
+    await safeRmdir(outputDir);
   }
 });
 
@@ -173,22 +180,48 @@ router.get("/conversions/:id/download", async (req, res): Promise<void> => {
     return;
   }
 
-  const outputDir = path.join(OUTPUTS_DIR, String(id));
   const originalBase = path.basename(conversion.originalFilename, path.extname(conversion.originalFilename));
+  const downloadName = `${originalBase}.${conversion.targetFormat}`;
+
+  // Serve from cloud storage if available
+  if (conversion.cloudObjectPath) {
+    try {
+      const { stream, contentType, contentLength } = await streamCloudFile(
+        conversion.cloudObjectPath,
+        downloadName,
+        conversion.targetFormat,
+      );
+
+      res.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);
+      res.setHeader("Content-Type", contentType);
+      if (contentLength) res.setHeader("Content-Length", contentLength);
+
+      stream.pipe(res);
+      return;
+    } catch (err) {
+      req.log.warn({ err, id }, "Cloud stream failed, trying disk fallback");
+    }
+  }
+
+  // Fallback: serve from local disk
+  const outputDir = path.join(OUTPUTS_DIR, String(id));
   const outputFilename = `${id}_${originalBase}.${conversion.targetFormat}`;
   const filePath = path.join(outputDir, outputFilename);
 
   try {
     await fs.access(filePath);
   } catch {
-    res.status(404).json({ error: "Output file not found on disk" });
+    res.status(404).json({ error: "Output file not found" });
     return;
   }
 
-  const downloadName = `${path.basename(conversion.originalFilename, path.extname(conversion.originalFilename))}.${conversion.targetFormat}`;
-
   res.setHeader("Content-Disposition", `attachment; filename="${downloadName}"`);
-  res.setHeader("Content-Type", conversion.targetFormat === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+  res.setHeader(
+    "Content-Type",
+    conversion.targetFormat === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  );
   res.sendFile(filePath);
 });
 
@@ -209,6 +242,12 @@ router.delete("/conversions/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  // Delete from cloud storage
+  if (conversion.cloudObjectPath) {
+    await deleteCloudFile(conversion.cloudObjectPath);
+  }
+
+  // Clean up any local remnants
   const outputDir = path.join(OUTPUTS_DIR, String(params.data.id));
   await safeRmdir(outputDir);
 
@@ -225,6 +264,7 @@ function toResponse(c: typeof conversionsTable.$inferSelect) {
     errorMessage: c.errorMessage ?? null,
     fileSizeBytes: c.fileSizeBytes,
     convertedFileSizeBytes: c.convertedFileSizeBytes ?? null,
+    cloudObjectPath: c.cloudObjectPath ?? null,
     createdAt: c.createdAt.toISOString(),
     completedAt: c.completedAt?.toISOString() ?? null,
   };

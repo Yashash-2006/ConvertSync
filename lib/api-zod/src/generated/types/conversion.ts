@@ -18,6 +18,11 @@ export interface Conversion {
   fileSizeBytes: number;
   /** @nullable */
   convertedFileSizeBytes?: number | null;
+  /**
+     * GCS object path when file is stored in cloud
+     * @nullable
+     */
+  cloudObjectPath?: string | null;
   createdAt: Date;
   /** @nullable */
   completedAt?: Date | null;

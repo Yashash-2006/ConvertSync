@@ -30,6 +30,7 @@ export const ListConversionsResponseItem = zod.object({
   "errorMessage": zod.string().nullish(),
   "fileSizeBytes": zod.number(),
   "convertedFileSizeBytes": zod.number().nullish(),
+  "cloudObjectPath": zod.string().nullish().describe('GCS object path when file is stored in cloud'),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullish()
 })
@@ -76,6 +77,7 @@ export const GetConversionResponse = zod.object({
   "errorMessage": zod.string().nullish(),
   "fileSizeBytes": zod.number(),
   "convertedFileSizeBytes": zod.number().nullish(),
+  "cloudObjectPath": zod.string().nullish().describe('GCS object path when file is stored in cloud'),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullish()
 })
@@ -86,6 +88,42 @@ export const GetConversionResponse = zod.object({
  */
 export const DeleteConversionParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+
+
+
+
+
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+})
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string().url(),
+  "objectPath": zod.string()
+})
+
+
+/**
+ * @summary Serve a public asset
+ */
+export const GetPublicObjectParams = zod.object({
+  "filePath": zod.coerce.string()
+})
+
+
+/**
+ * @summary Serve an object entity
+ */
+export const GetStorageObjectParams = zod.object({
+  "objectPath": zod.coerce.string()
 })
 
 

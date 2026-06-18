@@ -47,6 +47,11 @@ export interface Conversion {
   fileSizeBytes: number;
   /** @nullable */
   convertedFileSizeBytes?: number | null;
+  /**
+     * GCS object path when file is stored in cloud
+     * @nullable
+     */
+  cloudObjectPath?: string | null;
   createdAt: string;
   /** @nullable */
   completedAt?: string | null;
@@ -59,6 +64,20 @@ export interface ConversionStats {
   docxToPdfCount: number;
   pdfToDocxCount: number;
   totalBytesProcessed: number;
+}
+
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
 }
 
 export interface ErrorResponse {

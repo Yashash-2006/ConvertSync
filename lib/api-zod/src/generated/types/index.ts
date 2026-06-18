@@ -13,3 +13,5 @@ export * from './conversionStats';
 export * from './conversionStatus';
 export * from './errorResponse';
 export * from './healthStatus';
+export * from './uploadUrlRequest';
+export * from './uploadUrlResponse';

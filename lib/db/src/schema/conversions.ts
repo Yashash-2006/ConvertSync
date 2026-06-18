@@ -11,6 +11,7 @@ export const conversionsTable = pgTable("conversions", {
   errorMessage: text("error_message"),
   fileSizeBytes: integer("file_size_bytes").notNull(),
   convertedFileSizeBytes: integer("converted_file_size_bytes"),
+  cloudObjectPath: text("cloud_object_path"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });
