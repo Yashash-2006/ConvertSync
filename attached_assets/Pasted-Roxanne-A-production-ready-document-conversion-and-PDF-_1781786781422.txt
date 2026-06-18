@@ -1,0 +1,531 @@
+Roxanne
+A production-ready document conversion and PDF manipulation suite and server-side heavy processing.
+
+Live App: roxannee.vercel.app  |  Repository: github.com/SrinivasaPrasadGade/Roxanne
+
+Table of Contents
+Project Overview
+Feature Matrix
+Technology Stack
+Architecture
+Repository Structure
+Dependency Reference
+Frontend Dependencies
+Backend Dependencies
+System-Level Dependencies
+Workspace Tooling
+Environment Variables
+Local Development Setup
+Docker Setup
+Deployment Architecture
+Build Scripts Reference
+Engineering Decisions and Challenges Overcome
+Contributing
+License
+Project Overview
+Roxanne is a monorepo-based full-stack web application that exposes 14 document operations through a unified, dark-themed interface. The frontend is a React SPA served via Vercel's edge network. The backend is a Dockerized Express API running on Hugging Face Spaces with LibreOffice, Ghostscript, and a Python toolchain installed at the OS level for operations that cannot be handled in pure JavaScript.
+
+The project was designed around a clear constraint: zero third-party API costs for document processing. Every conversion runs server-side against open-source system tools or pure-JS libraries, keeping per-request cost at zero.
+
+Feature Matrix
+Category	Operation	Primary Engine	Output
+Organize	Merge PDF	pdf-lib	Single merged PDF
+Organize	Split PDF	pdf-lib	Individual page PDFs (ZIP)
+Organize	Rotate PDF	pdf-lib	Rotated PDF
+Convert	PDF → Word (.docx)	LibreOffice CLI + pdf2docx (Python)	DOCX file
+Convert	PDF → PowerPoint (.pptx)	LibreOffice CLI	PPTX file
+Convert	PDF → Excel (.xlsx)	LibreOffice CLI	XLSX file
+Convert	Word → PDF	LibreOffice CLI	PDF file
+Convert	PowerPoint → PDF	LibreOffice CLI	PDF file
+Convert	Excel → PDF	LibreOffice CLI	PDF file
+Convert	PDF → JPG	pdf-to-img + sharp	ZIP of JPEG images
+Convert	JPG → PDF	pdf-lib	Single PDF
+Security	Protect PDF	@pdfsmaller/pdf-encrypt	Password-protected PDF
+Security	Unlock PDF	@pdfsmaller/pdf-decrypt	Decrypted PDF
+Optimize	Compress PDF	Ghostscript (via LibreOffice)	Compressed PDF
+Optimize	OCR PDF	LibreOffice headless	Searchable PDF
+Optimize	Watermark PDF	pdf-lib	Watermarked PDF
+Technology Stack
+Frontend
+Layer	Technology	Version
+Framework	React	18.x
+Build Tool	Vite	Latest
+Language	TypeScript	Latest
+Styling	Tailwind CSS	v3
+State Management	Zustand	Latest
+Animations	Framer Motion	Latest
+Authentication	Firebase Auth (Google Sign-In)	Latest
+Routing	React Router	v7
+Icons	Lucide React	Latest
+Design Theme	Custom glassmorphism dark theme	—
+Backend
+Layer	Technology	Version
+Runtime	Node.js	20 (LTS)
+Framework	Express	v5
+Language	TypeScript (compiled to JS)	Latest
+File Uploads	Multer	Latest
+PDF Core	pdf-lib	Latest
+PDF Encryption	@pdfsmaller/pdf-encrypt	Latest
+PDF Decryption	@pdfsmaller/pdf-decrypt	Latest
+PDF-to-Image	pdf-to-img + sharp	Latest
+Archive	archiver	Latest
+Rate Limiting	express-rate-limit	Latest
+CORS	cors	Latest
+Office Conversion	LibreOffice (headless CLI)	System
+PDF-to-DOCX	pdf2docx (Python)	pip
+PDF Rendering	PyMuPDF (fitz)	1.24.2 (pinned)
+Infrastructure and Tooling
+Tool	Purpose
+pnpm	Package manager and workspace orchestration
+pnpm workspaces	Monorepo management (client / server / shared)
+concurrently	Parallel dev server execution
+Docker	Backend containerization
+docker-compose	Local multi-service orchestration
+Vercel	Frontend hosting (global edge CDN)
+Hugging Face Spaces	Backend hosting (Docker environment, 16 GB RAM)
+Architecture
+┌─────────────────────────────────────────────────────────┐
+│                        USER BROWSER                     │
+│                                                         │
+│   React 18 SPA (TypeScript)                             │
+│   ├── React Router v7  (page navigation)                │
+│   ├── Zustand          (upload state, progress)         │
+│   ├── Framer Motion    (page transitions, micro-UX)     │
+│   ├── Firebase Auth    (Google OAuth sign-in)           │
+│   └── Tailwind CSS v3  (glassmorphism dark theme)       │
+│                                                         │
+│                 Hosted on Vercel (edge)                  │
+└─────────────────────────┬───────────────────────────────┘
+                          │
+                   HTTPS API calls
+                   multipart/form-data uploads
+                          │
+┌─────────────────────────▼───────────────────────────────┐
+│                   EXPRESS v5 API SERVER                 │
+│                   Node 20 · TypeScript                  │
+│                                                         │
+│   Middleware Layer                                      │
+│   ├── cors              (ALLOWED_ORIGINS whitelist)     │
+│   ├── express-rate-limit(prevents abuse)                │
+│   └── multer            (multipart file parsing)        │
+│                                                         │
+│   Route Handlers  (one per operation)                   │
+│   ├── /api/merge        → pdf-lib                       │
+│   ├── /api/split        → pdf-lib                       │
+│   ├── /api/rotate       → pdf-lib                       │
+│   ├── /api/compress     → LibreOffice CLI               │
+│   ├── /api/watermark    → pdf-lib                       │
+│   ├── /api/protect      → @pdfsmaller/pdf-encrypt       │
+│   ├── /api/unlock       → @pdfsmaller/pdf-decrypt       │
+│   ├── /api/pdf-to-jpg   → pdf-to-img + sharp            │
+│   ├── /api/jpg-to-pdf   → pdf-lib                       │
+│   ├── /api/pdf-to-word  → LibreOffice CLI + pdf2docx    │
+│   ├── /api/pdf-to-ppt   → LibreOffice CLI               │
+│   ├── /api/pdf-to-excel → LibreOffice CLI               │
+│   ├── /api/word-to-pdf  → LibreOffice CLI               │
+│   ├── /api/ppt-to-pdf   → LibreOffice CLI               │
+│   └── /api/excel-to-pdf → LibreOffice CLI               │
+│                                                         │
+│   Output                                                │
+│   └── archiver          (ZIP for multi-file downloads)  │
+│                                                         │
+│   OS-Level Tools (installed in Docker image)            │
+│   ├── LibreOffice       (headless, --convert-to)        │
+│   ├── Ghostscript       (gs, PDF compression)           │
+│   ├── GraphicsMagick    (image ops)                     │
+│   ├── default-jre       (Java runtime for LibreOffice)  │
+│   ├── Python 3 + pip    (pdf2docx, PyMuPDF)             │
+│   └── Font packages     (fonts-liberation, dejavu)      │
+│                                                         │
+│   Hosted on Hugging Face Spaces (Docker, port 7860)     │
+└─────────────────────────────────────────────────────────┘
+Data Flow (Single File Operation)
+Browser
+  │
+  │  1. User selects file(s) and chooses operation
+  │  2. Zustand sets upload progress state
+  │  3. fetch() POST multipart/form-data → API server
+  │
+API Server
+  │
+  │  4. Multer writes upload to /tmp/uploads/
+  │  5. Route handler invokes appropriate library or spawns
+  │     LibreOffice subprocess
+  │  6. Output written to /tmp/outputs/
+  │  7. Single file → streamed as response
+  │     Multiple files → archiver zips → streamed as .zip
+  │
+Browser
+  │
+  └── 8. browser-native download triggered by Blob URL
+Repository Structure
+Roxanne/
+│
+├── client/                        # Vite + React frontend
+│   ├── src/
+│   │   ├── components/            # Shared UI components
+│   │   ├── pages/                 # Route-level page components
+│   │   ├── store/                 # Zustand stores
+│   │   ├── hooks/                 # Custom React hooks
+│   │   ├── lib/                   # API client utilities
+│   │   └── main.tsx               # App entrypoint
+│   ├── public/
+│   ├── index.html
+│   ├── tailwind.config.ts
+│   ├── vite.config.ts
+│   └── package.json
+│
+├── server/                        # Express API backend
+│   ├── src/
+│   │   ├── routes/                # One file per operation category
+│   │   ├── middleware/            # CORS, rate-limit, multer configs
+│   │   └── index.ts               # Server entrypoint
+│   ├── Dockerfile                 # (optional per-service)
+│   └── package.json
+│
+├── shared/                        # Cross-package TypeScript types
+│   └── types.ts                   # Request/response interfaces
+│
+├── .env.example                   # Environment variable template
+├── .gitignore
+├── Dockerfile                     # Production Docker image (backend)
+├── docker-compose.yml             # Local multi-service setup
+├── package.json                   # Root workspace package
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml            # Monorepo package declarations
+├── render.yaml                    # Render.com deploy config (historical)
+├── test-pdf-lib.js                # Development debug script (root artifact)
+└── README.md
+Dependency Reference
+Frontend Dependencies
+react + react-dom · v18
+What it is: The UI rendering library. Where it is used: client/src/ — every component, page, and hook. How it is used: Functional components with hooks. React 18's concurrent features enable smooth progress feedback during file uploads. The SPA architecture means no full-page reloads between tools.
+
+vite
+What it is: Build tool and dev server, replacing Create React App. Where it is used: client/vite.config.ts and client/package.json build scripts. How it is used: Serves the client in development via HMR on port 5173. In production, builds an optimized static bundle that Vercel deploys to its CDN. Vite also handles TypeScript transpilation and Tailwind's PostCSS integration.
+
+typescript
+What it is: Typed superset of JavaScript, used on both client and server. Where it is used: Every .ts and .tsx source file. The shared/types.ts package is the source of truth for API request/response shapes consumed by both workspaces. How it is used: Client TypeScript is transpiled by Vite. Server TypeScript is compiled to dist/ by tsc during pnpm build.
+
+tailwindcss · v3
+What it is: Utility-first CSS framework. Where it is used: client/tailwind.config.ts, all TSX component files. How it is used: Provides the dark glassmorphism theme via Tailwind's dark: modifier and backdrop-blur utilities. Custom color tokens (likely in tailwind.config.ts) define the glass-panel palette and accent colors used across the UI.
+
+zustand
+What it is: Minimal state management library for React. Where it is used: client/src/store/ — one or more store files. How it is used: Manages upload state across components without prop drilling. Tracks file selection, upload progress, operation type, and the download-ready state. Zustand's subscription model makes the progress bar update in real-time without rendering the whole component tree.
+
+framer-motion
+What it is: A React animation library for declarative motion. Where it is used: Route transition wrappers in client/src/pages/, and on interactive UI elements. How it is used: Drives page entry/exit animations, staggered card animations on the tools grid, and micro-interactions on drag-and-drop file targets. Provides the polished SPA feel without requiring manual CSS keyframe management.
+
+firebase
+What it is: Google's Firebase SDK, used here only for its Authentication module. Where it is used: client/src/ — likely a lib/firebase.ts config file and auth-guarded routes. How it is used: Initializes Firebase app with config keys from environment variables. Provides Google OAuth sign-in via signInWithPopup / GoogleAuthProvider. The onAuthStateChanged listener tracks the user session. Note in pnpm-workspace.yaml: @firebase/util is explicitly allowlisted for build scripts, which was required because pnpm's secure-by-default mode blocked Firebase's native build step.
+
+react-router-dom · v7
+What it is: Client-side routing for React. Where it is used: client/src/main.tsx and route definitions across page components. How it is used: Declares routes for each tool category (organize, convert, security, optimize). React Router v7 introduces a file-system routing model that keeps route configuration colocated with components.
+
+lucide-react
+What it is: A tree-shakeable icon library. Where it is used: All UI components that need icons. How it is used: Imports specific icon components like <FileText />, <Lock />, <Download /> rather than importing the whole bundle. Combined with Tailwind's sizing utilities for consistent icon treatment.
+
+Backend Dependencies
+express · v5
+What it is: The Node.js HTTP framework. Where it is used: server/src/index.ts — server bootstrap; server/src/routes/ — all route handlers. How it is used: Express 5 (the first major version since v4) adds top-level async/await error propagation, removing the need for explicit next(err) calls in async route handlers. Routes follow a pattern of: receive upload → process → pipe output file to response → clean up temp files.
+
+multer
+What it is: Middleware for handling multipart/form-data uploads in Express. Where it is used: server/src/middleware/ — a shared multer configuration applied to all file-upload routes. How it is used: Configured with diskStorage pointing to /tmp/uploads/. Sets a file size limit read from MAX_FILE_SIZE_MB (default 50 MB). Validates MIME types for each endpoint (e.g., only application/pdf accepted on PDF-only routes). Returns the path of the saved temp file to the route handler for further processing.
+
+pdf-lib
+What it is: A pure-JavaScript/TypeScript library for PDF creation and manipulation. Where it is used: server/src/routes/ — merge, split, rotate, jpg-to-pdf, watermark routes. How it is used:
+
+Merge: PDFDocument.load() on each uploaded file, then mergedDoc.copyPages() iterates pages from each source into a single output document.
+Split: Loads the source PDF, iterates doc.getPageCount(), creates one PDFDocument per page, copies the single page in, and saves it. archiver then bundles the page PDFs into a ZIP.
+Rotate: Calls page.setRotation(degrees(angle)) on each page from a PDFDocument.
+JPG to PDF: Creates a new PDFDocument, embeds each image with doc.embedJpg() or doc.embedPng(), adds a page sized to the image dimensions, and draws the image across the full page.
+Watermark: Embeds a StandardFonts.Helvetica font and draws the watermark string with page.drawText() using opacity and rotation parameters to center-stamp each page.
+pdf-lib is preferred over alternatives here because it runs entirely in-process (no subprocess spawning), handles multi-page PDFs natively, and produces valid PDF output without depending on system tools. Important limitation: pdf-lib does not implement PDF encryption/decryption, which is why the @pdfsmaller packages below exist.
+
+@pdfsmaller/pdf-encrypt
+What it is: A specialized npm package for adding password protection to PDFs. Where it is used: server/src/routes/ — protect route. How it is used: Takes the input PDF buffer and a user-supplied password string, applies AES-128 or RC4 encryption, and returns the protected PDF buffer. This package was introduced to replace a failed attempt to use pdf-lib for encryption — pdf-lib's API does not include encryption support.
+
+@pdfsmaller/pdf-decrypt
+What it is: Paired package for removing password protection from PDFs. Where it is used: server/src/routes/ — unlock route. How it is used: Accepts the encrypted PDF buffer and the user-supplied password. If the password is correct, returns the decrypted PDF buffer. If the password is wrong, throws an error caught by the route handler and returned as a 400 response.
+
+pdf-to-img
+What it is: A Node.js library that renders PDF pages to image buffers. Where it is used: server/src/routes/ — pdf-to-jpg route. How it is used: Iterates each page of the uploaded PDF, rasterizes it at a target DPI, and returns raw image buffers. The sharp library then re-encodes these as JPEG at the desired quality level. All output JPEGs are collected and passed to archiver to produce a ZIP file for download.
+
+sharp
+What it is: High-performance image processing library built on libvips. Where it is used: server/src/routes/ — alongside pdf-to-img in the pdf-to-jpg pipeline. How it is used: Receives raw image buffers from pdf-to-img, converts to JPEG format at configurable quality, and optionally resizes. Sharp is chosen over alternatives because libvips processes images in streaming fashion, making it memory-efficient for large PDF documents with many pages.
+
+archiver
+What it is: Streaming archive creation library supporting ZIP and TAR formats. Where it is used: server/src/routes/ — split PDF and pdf-to-jpg routes, both of which produce multiple output files. How it is used: Creates a zip format archive in streaming mode, appending each output file buffer as a named entry. The archive stream is piped directly into res (the Express response), so no full ZIP is ever written to disk — it streams to the client while it is being assembled.
+
+express-rate-limit
+What it is: Express middleware for IP-based request rate limiting. Where it is used: server/src/middleware/ — applied globally or per-route. How it is used: Limits the number of document processing requests per IP within a time window. This protects against both abuse and against the LibreOffice process pool being overwhelmed, since each conversion spawns a subprocess. Response includes standard Retry-After headers.
+
+cors
+What it is: Express middleware for Cross-Origin Resource Sharing headers. Where it is used: server/src/index.ts — applied as the first middleware. How it is used: Configured with an ALLOWED_ORIGINS whitelist read from the environment variable. In production this is the Vercel frontend URL. In development it is http://localhost:5173. This prevents arbitrary browser clients from uploading files to the production API.
+
+System-Level Dependencies
+These are installed in the Docker image at build time via apt-get and pip3.
+
+libreoffice (system package)
+What it is: An open-source office suite with a headless mode for server-side document conversion. Where it is used: Invoked via Node.js child_process.spawn() in all Office conversion routes. How it is used:
+
+libreoffice --headless --norestore --nofirststartwizard
+  --convert-to <target-format>
+  --outdir <output-dir>
+  <input-file>
+The --norestore and --nofirststartwizard flags prevent LibreOffice from hanging on interactive prompts. The server spawns LibreOffice as a subprocess, awaits its exit code, then reads the output file.
+
+Critical challenge resolved: LibreOffice has a substantial first-run cost — it creates a user profile and loads fonts on first invocation. To eliminate this latency from API responses, the Dockerfile includes a pre-warming step at image build time:
+
+RUN mkdir -p /tmp/lo_warmup && \
+    echo "warmup" > /tmp/lo_warmup/test.txt && \
+    timeout 30 libreoffice --headless --norestore --nofirststartwizard \
+      --convert-to pdf --outdir /tmp/lo_warmup /tmp/lo_warmup/test.txt || true && \
+    rm -rf /tmp/lo_warmup
+This runs during docker build, so the pre-built profile is baked into the image layer and the first API request does not pay the cold-start tax.
+
+ghostscript (system package)
+What it is: PostScript and PDF processing suite. Where it is used: PDF compression route. How it is used: Invoked via child_process.spawn() with quality settings (/ebook, /printer, /screen) to recompress PDF streams. Ghostscript's pdfwrite device is significantly more effective at reducing file size than any pure-JS approach.
+
+graphicsmagick (system package)
+What it is: Image manipulation suite. Where it is used: Supplementary image operations where sharp is insufficient. How it is used: Provides a fallback for certain rasterization operations and image format conversions.
+
+default-jre-headless (system package)
+What it is: Java Runtime Environment (headless, no GUI). Where it is used: Required as a dependency of LibreOffice for certain document format processing. How it is used: Installed automatically; LibreOffice's macro engine and some format handlers require a JVM. The headless variant reduces image size.
+
+python3 + pip3 (system packages)
+pdf2docx (Python library)
+What it is: Python library for converting PDFs to DOCX, using PyMuPDF for rendering and python-docx for output. Where it is used: The PDF-to-Word conversion route. How it is used: The Node.js route spawns a Python subprocess running a small script that calls pdf2docx.Converter. This Python path provides better layout fidelity (especially for complex PDFs with tables and columns) than LibreOffice alone, and is used as the primary conversion method with LibreOffice as a fallback.
+
+PyMuPDF (fitz) · pinned at v1.24.2
+What it is: Python bindings for the MuPDF PDF rendering engine. Where it is used: Internally by pdf2docx for reading PDF content. How it is used: Not called directly by the application code — it is a transitive dependency of pdf2docx. The version is explicitly pinned to 1.24.2 in the Dockerfile because PyMuPDF introduced a breaking API change in 1.25.x that is incompatible with the version of pdf2docx in use.
+
+Font packages: fonts-liberation, fonts-dejavu
+What they are: Open-source font families. Where they are used: Automatically loaded by LibreOffice and Ghostscript when processing documents. How they are used: fonts-liberation provides metric-compatible replacements for Arial, Times New Roman, and Courier New — ensuring that documents authored on Windows render correctly on the Linux server. fonts-dejavu covers Unicode character coverage. fc-cache -f -v is run in the Dockerfile after font installation to rebuild the font cache.
+
+Workspace Tooling
+pnpm + pnpm-workspace.yaml
+What it is: A fast, disk-efficient package manager with monorepo (workspace) support. Where it is used: Root of the repository — pnpm-workspace.yaml declares the three packages. How it is used:
+
+packages:
+  - 'client'
+  - 'server'
+  - 'shared'
+Running pnpm install at root installs all packages. Running pnpm --filter server build scopes a command to a single workspace. The shared package containing types.ts is automatically resolvable in both client and server without publishing to a registry.
+
+Build script allowlisting — pnpm disables postinstall scripts from all packages by default for security. The project needed to opt several packages back in:
+
+allowBuilds:
+  '@firebase/util': true
+  esbuild: true
+  protobufjs: true
+onlyBuiltDependencies:
+  - esbuild
+@firebase/util and protobufjs require native build steps. esbuild ships platform-specific binaries via postinstall.
+
+concurrently (root devDependency)
+What it is: Runs multiple commands concurrently in one terminal. Where it is used: Root package.json dev script. How it is used:
+
+"dev": "concurrently --kill-others-on-fail \"pnpm --filter server dev\" \"pnpm --filter client dev\""
+--kill-others-on-fail ensures that if the Express server crashes, the Vite server also exits, preventing a confusing state where the UI is running but all API calls fail.
+
+Environment Variables
+Copy .env.example to server/.env before running the server.
+
+Variable	Default	Description
+PORT	3001	Port the Express server listens on. Hugging Face requires 7860.
+ALLOWED_ORIGINS	http://localhost:5173	Comma-separated CORS whitelist. Set to your Vercel URL in production.
+MAX_FILE_SIZE_MB	50	Maximum allowed upload size enforced by multer.
+LIBREOFFICE_PATH	(empty)	Absolute path to the libreoffice binary. If empty, the server searches $PATH. Set this if LibreOffice is installed in a non-standard location on your machine.
+The frontend additionally requires Firebase configuration keys. These are typically set in client/.env.local or in Vercel project settings:
+
+Variable	Description
+VITE_FIREBASE_API_KEY	Firebase project API key
+VITE_FIREBASE_AUTH_DOMAIN	Firebase Auth domain
+VITE_FIREBASE_PROJECT_ID	Firebase project ID
+VITE_FIREBASE_APP_ID	Firebase app ID
+Local Development Setup
+Prerequisites
+Requirement	Version	Notes
+Node.js	v20 or higher	LTS recommended
+pnpm	v8 or higher	npm install -g pnpm
+LibreOffice	Latest stable	Required for Office conversion routes locally. Without it, those routes fall back to a mock response.
+Python 3	v3.10+	Required for PDF-to-Word conversion
+pdf2docx	Latest	pip3 install pdf2docx
+PyMuPDF	1.24.2	pip3 install PyMuPDF==1.24.2
+Steps
+# 1. Clone the repository
+git clone https://github.com/SrinivasaPrasadGade/Roxanne.git
+cd Roxanne
+
+# 2. Install all workspace dependencies
+pnpm install
+
+# 3. Configure the server environment
+cp .env.example server/.env
+# Edit server/.env with your local values
+
+# 4. Start both servers concurrently
+pnpm dev
+This starts:
+
+Vite dev server on http://localhost:5173 (with HMR)
+Express server on http://localhost:3001 (with nodemon file watching)
+If LibreOffice is not installed locally, Office conversion routes will respond with a mock or an informative error. All PDF-native operations (merge, split, rotate, protect, etc.) work without LibreOffice.
+
+Running Servers Independently
+# Server only
+pnpm --filter server dev
+
+# Client only
+pnpm --filter client dev
+Docker Setup
+The Dockerfile builds only the backend. The frontend is always deployed to Vercel and is not containerized.
+
+Single-container build
+docker build -t roxanne-server .
+docker run -p 3001:3001 \
+  -e PORT=3001 \
+  -e ALLOWED_ORIGINS=http://localhost:5173 \
+  -e MAX_FILE_SIZE_MB=50 \
+  roxanne-server
+Local multi-service with docker-compose
+docker-compose up --build
+This brings up the backend container per docker-compose.yml:
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - ALLOWED_ORIGINS=http://localhost:5173
+      - MAX_FILE_SIZE_MB=50
+    volumes:
+      - tmp-uploads:/tmp/uploads
+      - tmp-outputs:/tmp/outputs
+    restart: always
+Named Docker volumes (tmp-uploads, tmp-outputs) persist temp files across container restarts during development and survive container crashes. In production, these directories are ephemeral by design — files are cleaned up immediately after the response is sent.
+
+Deployment Architecture
++------------------+          +-----------------------------+
+|                  |          |                             |
+|   Vercel (CDN)   |  HTTPS   |   Hugging Face Spaces       |
+|                  +--------->|   (Docker, port 7860)       |
+|  React SPA       |          |                             |
+|  TypeScript      |          |  Express API + LibreOffice  |
+|  Global Edge     |          |  16 GB RAM                  |
+|                  |          |  Debian Bullseye base image |
++------------------+          +-----------------------------+
+Why Hugging Face Spaces?
+Hugging Face Spaces was chosen over typical Node.js platforms (Heroku, Railway, Render) for one critical reason: LibreOffice requires approximately 800 MB of disk space and at least 1–2 GB of RAM to operate headlessly. Hugging Face's free Docker Spaces tier provides 16 GB RAM, persistent build layers, and unrestricted apt package installation — matching the resource profile of the Dockerfile's system dependencies.
+
+The render.yaml file in the repository is a historical artifact from an earlier attempt to deploy on Render.com, which was later abandoned in favour of Hugging Face due to resource constraints.
+
+Hugging Face-Specific Configuration
+EXPOSE 7860        # Hugging Face requires port 7860
+ENV PORT=7860      # Application reads this for Express listen()
+ENV HOME=/tmp      # Hugging Face containers have a read-only home dir
+                   # LibreOffice and other tools write profile data to HOME
+Setting HOME=/tmp resolves the error LibreOffice: cannot create user profile that occurs when the runtime user's home directory is read-only.
+
+Build Scripts Reference
+All scripts are run from the repository root.
+
+Command	Effect
+pnpm dev	Start both Vite (port 5173) and Express (port 3001) concurrently
+pnpm build	Compile server TypeScript, then build Vite production bundle
+pnpm start	Start the compiled Express server (dist/index.js)
+pnpm clean	Remove all node_modules directories across the workspace
+pnpm --filter server dev	Start only the Express server with nodemon
+pnpm --filter client dev	Start only the Vite dev server
+pnpm --filter server build	Compile server TypeScript to server/dist/
+pnpm --filter client build	Build Vite production bundle to client/dist/
+Engineering Decisions and Challenges Overcome
+This section documents the specific technical problems encountered during the 24-commit build history of Roxanne and the solutions that were implemented.
+
+1. LibreOffice Cold-Start Latency
+Problem: LibreOffice creates a user profile on its first invocation, loading font metrics and writing config files to disk. On a freshly started container, this added 8–15 seconds to the first conversion request, causing client-side timeouts.
+
+Solution: A pre-warming step was added to the Dockerfile that runs LibreOffice during the image build phase:
+
+RUN mkdir -p /tmp/lo_warmup && \
+    echo "warmup" > /tmp/lo_warmup/test.txt && \
+    timeout 30 libreoffice --headless --norestore --nofirststartwizard \
+      --convert-to pdf --outdir /tmp/lo_warmup /tmp/lo_warmup/test.txt || true && \
+    rm -rf /tmp/lo_warmup
+Because this executes during docker build, the LibreOffice profile is embedded in the image layer. The || true suffix prevents the build from failing if the warm-up takes longer than 30 seconds on slow CI machines. Once deployed, first-request latency dropped to sub-second.
+
+2. PDF Encryption Not Supported by pdf-lib
+Problem: The pdf-lib library — which handles all native PDF manipulation in the project — does not implement PDF encryption or decryption. Attempting to implement protect/unlock operations with it required reading raw cross-reference tables and applying RC4 or AES ciphers manually, which is error-prone and outside pdf-lib's design scope.
+
+Solution: Two dedicated packages were introduced:
+
+@pdfsmaller/pdf-encrypt for password protection
+@pdfsmaller/pdf-decrypt for password removal
+This keeps pdf-lib in place for everything it does well (structural operations), while delegating cryptographic operations to purpose-built libraries. The test-pdf-lib.js file present at the repository root is a debugging artifact from the investigation phase where various encryption approaches were tested.
+
+3. pnpm Security Model Blocking Native Package Builds
+Problem: pnpm's secure-by-default policy disables postinstall scripts for all packages not explicitly allowlisted. This caused install failures for three packages that require native build steps:
+
+@firebase/util — has a build script for its native Firestore internals
+esbuild — downloads the correct platform binary via postinstall
+protobufjs — compiles its C++ extension via node-gyp
+Solution: Explicit allowlisting in pnpm-workspace.yaml:
+
+allowBuilds:
+  '@firebase/util': true
+  esbuild: true
+  protobufjs: true
+onlyBuiltDependencies:
+  - esbuild
+onlyBuiltDependencies limits esbuild's postinstall to only run when it is the direct install target, avoiding redundant rebuild on every pnpm install.
+
+4. Hugging Face Environment Constraints
+Problem: Hugging Face Spaces Docker environments have two specific constraints not present in standard cloud hosting:
+
+The container user's home directory is read-only. LibreOffice and Ghostscript write profile data to $HOME, causing crashes.
+All Spaces must serve on port 7860. The application was originally written to use port 3001.
+Solution:
+
+ENV HOME=/tmp      # Redirect home to a writable location
+ENV PORT=7860      # Override the application's default port
+EXPOSE 7860
+The Express server reads process.env.PORT for its listen port, so the environment variable override was sufficient without any code changes.
+
+5. PyMuPDF API Breaking Change
+Problem: The pdf2docx library depends on PyMuPDF (imported as fitz). PyMuPDF 1.25.x introduced renamed method signatures that broke pdf2docx's internal usage, causing all PDF-to-Word conversions to fail with AttributeError after an automatic pip upgrade.
+
+Solution: Version-pin PyMuPDF in the Dockerfile:
+
+pip3 install "pdf2docx" "PyMuPDF==1.24.2"
+This pins PyMuPDF to the last version compatible with the pdf2docx API surface while leaving pdf2docx itself unpinned to receive upstream fixes.
+
+6. Deployment Platform Migration (Render → Hugging Face)
+Problem: The initial deployment target was Render.com (evidenced by render.yaml in the repository). Render's free tier and lower-tier paid plans do not provide sufficient RAM for LibreOffice's runtime requirements. On the 512 MB RAM Render instance, LibreOffice ran out of memory processing multi-page documents.
+
+Solution: Migration to Hugging Face Spaces, which provides a free Docker environment with 16 GB RAM. The render.yaml was left in the repository for reference but is no longer used in active deployments. The Dockerfile was updated to expose and target port 7860.
+
+7. Archiver ZIP Streaming for Multi-File Responses
+Problem: Operations producing multiple files (split PDF → N pages, PDF-to-JPG → N images) originally wrote individual files to disk, then read them all back to zip them, then sent the zip. This created a full double-write: once to individual files, once to the zip.
+
+Solution: archiver was configured in streaming mode. Output buffers from pdf-lib or sharp are appended to the archive as in-memory entries without being written to disk. The archive stream is piped directly into the Express response object. The client receives a streaming ZIP download while the server is still processing remaining pages.
+
+Contributing
+Fork the repository.
+Create a feature branch: git checkout -b feature/your-feature-name
+Commit your changes with descriptive messages.
+Push the branch and open a pull request against main.
+Ensure that the server builds cleanly (pnpm --filter server build) before submitting.
+When adding a new operation, follow the existing pattern:
+
+Add a route file in server/src/routes/
+Export the type definitions from shared/types.ts
+Add a corresponding page and API call in client/src/
+License
+This project is open-source. See the repository for license terms.
+
+Built with Node.js 20, React 18, and a deep respect for headless LibreOffice.
