@@ -127,6 +127,165 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pdf:
+    get:
+      operationId: listPdfOperations
+      tags: [pdf]
+      summary: List all PDF operations
+      responses:
+        "200":
+          description: List of PDF operations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PdfOperation"
+
+  /pdf/merge:
+    post:
+      operationId: mergePdfs
+      tags: [pdf]
+      summary: Merge multiple PDFs into one
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/MergePdfInput"
+      responses:
+        "201":
+          description: Merged PDF operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/split:
+    post:
+      operationId: splitPdf
+      tags: [pdf]
+      summary: Split a PDF into individual pages (returned as ZIP)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SplitPdfInput"
+      responses:
+        "201":
+          description: Split PDF operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/compress:
+    post:
+      operationId: compressPdf
+      tags: [pdf]
+      summary: Compress a PDF file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CompressPdfInput"
+      responses:
+        "201":
+          description: Compress PDF operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/protect:
+    post:
+      operationId: protectPdf
+      tags: [pdf]
+      summary: Password-protect a PDF file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ProtectPdfInput"
+      responses:
+        "201":
+          description: Protect PDF operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pdf/{id}:
+    get:
+      operationId: getPdfOperation
+      tags: [pdf]
+      summary: Get a single PDF operation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PDF operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PdfOperation"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePdfOperation
+      tags: [pdf]
+      summary: Delete a PDF operation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /storage/uploads/request-url:
     post:
       tags: [Storage]
@@ -280,6 +439,88 @@ components:
           type: integer
         totalBytesProcessed:
           type: integer
+
+    PdfOperation:
+      type: object
+      required: [id, operationType, status, originalFilenames, createdAt]
+      properties:
+        id:
+          type: integer
+        operationType:
+          type: string
+          enum: [merge, split, compress, protect]
+        status:
+          type: string
+          enum: [pending, completed, failed]
+        errorMessage:
+          type: ["string", "null"]
+        originalFilenames:
+          type: array
+          items:
+            type: string
+        resultFilename:
+          type: ["string", "null"]
+        fileSizeBytes:
+          type: ["integer", "null"]
+        resultFileSizeBytes:
+          type: ["integer", "null"]
+        cloudObjectPath:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+
+    MergePdfInput:
+      type: object
+      required: [files]
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: Two or more PDF files to merge
+
+    SplitPdfInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: PDF file to split
+        pageRanges:
+          type: string
+          description: "Comma-separated page ranges e.g. '1-3,4-6,7'. Leave empty to split into individual pages."
+
+    CompressPdfInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: PDF file to compress
+        level:
+          type: string
+          enum: [low, medium, high]
+          description: "Compression level: low (smallest), medium (balanced), high (best quality)"
+
+    ProtectPdfInput:
+      type: object
+      required: [file, password]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: PDF file to protect
+        password:
+          type: string
+          minLength: 1
+          description: Password to set on the PDF
 
     UploadUrlRequest:
       type: object

@@ -66,6 +66,86 @@ export interface ConversionStats {
   totalBytesProcessed: number;
 }
 
+export type PdfOperationOperationType = typeof PdfOperationOperationType[keyof typeof PdfOperationOperationType];
+
+
+export const PdfOperationOperationType = {
+  merge: 'merge',
+  split: 'split',
+  compress: 'compress',
+  protect: 'protect',
+} as const;
+
+export type PdfOperationStatus = typeof PdfOperationStatus[keyof typeof PdfOperationStatus];
+
+
+export const PdfOperationStatus = {
+  pending: 'pending',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface PdfOperation {
+  id: number;
+  operationType: PdfOperationOperationType;
+  status: PdfOperationStatus;
+  /** @nullable */
+  errorMessage?: string | null;
+  originalFilenames: string[];
+  /** @nullable */
+  resultFilename?: string | null;
+  /** @nullable */
+  fileSizeBytes?: number | null;
+  /** @nullable */
+  resultFileSizeBytes?: number | null;
+  /** @nullable */
+  cloudObjectPath?: string | null;
+  createdAt: string;
+  /** @nullable */
+  completedAt?: string | null;
+}
+
+export interface MergePdfInput {
+  /** Two or more PDF files to merge */
+  files: Blob[];
+}
+
+export interface SplitPdfInput {
+  /** PDF file to split */
+  file: Blob;
+  /** Comma-separated page ranges e.g. '1-3,4-6,7'. Leave empty to split into individual pages. */
+  pageRanges?: string;
+}
+
+/**
+ * Compression level: low (smallest), medium (balanced), high (best quality)
+ */
+export type CompressPdfInputLevel = typeof CompressPdfInputLevel[keyof typeof CompressPdfInputLevel];
+
+
+export const CompressPdfInputLevel = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+} as const;
+
+export interface CompressPdfInput {
+  /** PDF file to compress */
+  file: Blob;
+  /** Compression level: low (smallest), medium (balanced), high (best quality) */
+  level?: CompressPdfInputLevel;
+}
+
+export interface ProtectPdfInput {
+  /** PDF file to protect */
+  file: Blob;
+  /**
+     * Password to set on the PDF
+     * @minLength 1
+     */
+  password: string;
+}
+
 export interface UploadUrlRequest {
   /** @minLength 1 */
   name: string;

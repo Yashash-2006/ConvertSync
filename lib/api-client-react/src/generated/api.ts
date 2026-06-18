@@ -20,11 +20,16 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  CompressPdfInput,
   Conversion,
   ConversionInput,
   ConversionStats,
   ErrorResponse,
   HealthStatus,
+  MergePdfInput,
+  PdfOperation,
+  ProtectPdfInput,
+  SplitPdfInput,
   UploadUrlRequest,
   UploadUrlResponse
 } from './api.schemas';
@@ -495,6 +500,529 @@ export const useDeleteConversion = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getDeleteConversionMutationOptions(options));
+    }
+
+export const getListPdfOperationsUrl = () => {
+
+
+
+
+  return `/api/pdf`
+}
+
+/**
+ * @summary List all PDF operations
+ */
+export const listPdfOperations = async ( options?: RequestInit): Promise<PdfOperation[]> => {
+
+  return customFetch<PdfOperation[]>(getListPdfOperationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPdfOperationsQueryKey = () => {
+    return [
+    `/api/pdf`
+    ] as const;
+    }
+
+
+export const getListPdfOperationsQueryOptions = <TData = Awaited<ReturnType<typeof listPdfOperations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPdfOperations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPdfOperationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPdfOperations>>> = ({ signal }) => listPdfOperations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPdfOperations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPdfOperationsQueryResult = NonNullable<Awaited<ReturnType<typeof listPdfOperations>>>
+export type ListPdfOperationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all PDF operations
+ */
+
+export function useListPdfOperations<TData = Awaited<ReturnType<typeof listPdfOperations>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPdfOperations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPdfOperationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getMergePdfsUrl = () => {
+
+
+
+
+  return `/api/pdf/merge`
+}
+
+/**
+ * @summary Merge multiple PDFs into one
+ */
+export const mergePdfs = async (mergePdfInput: MergePdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+mergePdfInput.files.forEach(value => formData.append(`files`, value));
+
+  return customFetch<PdfOperation>(getMergePdfsUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getMergePdfsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergePdfs>>, TError,{data: BodyType<MergePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof mergePdfs>>, TError,{data: BodyType<MergePdfInput>}, TContext> => {
+
+const mutationKey = ['mergePdfs'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof mergePdfs>>, {data: BodyType<MergePdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  mergePdfs(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MergePdfsMutationResult = NonNullable<Awaited<ReturnType<typeof mergePdfs>>>
+    export type MergePdfsMutationBody = BodyType<MergePdfInput>
+    export type MergePdfsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Merge multiple PDFs into one
+ */
+export const useMergePdfs = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mergePdfs>>, TError,{data: BodyType<MergePdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof mergePdfs>>,
+        TError,
+        {data: BodyType<MergePdfInput>},
+        TContext
+      > => {
+      return useMutation(getMergePdfsMutationOptions(options));
+    }
+
+export const getSplitPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/split`
+}
+
+/**
+ * @summary Split a PDF into individual pages (returned as ZIP)
+ */
+export const splitPdf = async (splitPdfInput: SplitPdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, splitPdfInput.file);
+if(splitPdfInput.pageRanges !== undefined) {
+ formData.append(`pageRanges`, splitPdfInput.pageRanges);
+ }
+
+  return customFetch<PdfOperation>(getSplitPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getSplitPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof splitPdf>>, TError,{data: BodyType<SplitPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof splitPdf>>, TError,{data: BodyType<SplitPdfInput>}, TContext> => {
+
+const mutationKey = ['splitPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof splitPdf>>, {data: BodyType<SplitPdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  splitPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SplitPdfMutationResult = NonNullable<Awaited<ReturnType<typeof splitPdf>>>
+    export type SplitPdfMutationBody = BodyType<SplitPdfInput>
+    export type SplitPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Split a PDF into individual pages (returned as ZIP)
+ */
+export const useSplitPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof splitPdf>>, TError,{data: BodyType<SplitPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof splitPdf>>,
+        TError,
+        {data: BodyType<SplitPdfInput>},
+        TContext
+      > => {
+      return useMutation(getSplitPdfMutationOptions(options));
+    }
+
+export const getCompressPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/compress`
+}
+
+/**
+ * @summary Compress a PDF file
+ */
+export const compressPdf = async (compressPdfInput: CompressPdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, compressPdfInput.file);
+if(compressPdfInput.level !== undefined) {
+ formData.append(`level`, compressPdfInput.level);
+ }
+
+  return customFetch<PdfOperation>(getCompressPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getCompressPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof compressPdf>>, TError,{data: BodyType<CompressPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof compressPdf>>, TError,{data: BodyType<CompressPdfInput>}, TContext> => {
+
+const mutationKey = ['compressPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof compressPdf>>, {data: BodyType<CompressPdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  compressPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompressPdfMutationResult = NonNullable<Awaited<ReturnType<typeof compressPdf>>>
+    export type CompressPdfMutationBody = BodyType<CompressPdfInput>
+    export type CompressPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Compress a PDF file
+ */
+export const useCompressPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof compressPdf>>, TError,{data: BodyType<CompressPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof compressPdf>>,
+        TError,
+        {data: BodyType<CompressPdfInput>},
+        TContext
+      > => {
+      return useMutation(getCompressPdfMutationOptions(options));
+    }
+
+export const getProtectPdfUrl = () => {
+
+
+
+
+  return `/api/pdf/protect`
+}
+
+/**
+ * @summary Password-protect a PDF file
+ */
+export const protectPdf = async (protectPdfInput: ProtectPdfInput, options?: RequestInit): Promise<PdfOperation> => {
+    const formData = new FormData();
+formData.append(`file`, protectPdfInput.file);
+formData.append(`password`, protectPdfInput.password);
+
+  return customFetch<PdfOperation>(getProtectPdfUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body:
+      formData,
+  }
+);}
+
+
+
+
+export const getProtectPdfMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof protectPdf>>, TError,{data: BodyType<ProtectPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof protectPdf>>, TError,{data: BodyType<ProtectPdfInput>}, TContext> => {
+
+const mutationKey = ['protectPdf'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof protectPdf>>, {data: BodyType<ProtectPdfInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  protectPdf(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ProtectPdfMutationResult = NonNullable<Awaited<ReturnType<typeof protectPdf>>>
+    export type ProtectPdfMutationBody = BodyType<ProtectPdfInput>
+    export type ProtectPdfMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Password-protect a PDF file
+ */
+export const useProtectPdf = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof protectPdf>>, TError,{data: BodyType<ProtectPdfInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof protectPdf>>,
+        TError,
+        {data: BodyType<ProtectPdfInput>},
+        TContext
+      > => {
+      return useMutation(getProtectPdfMutationOptions(options));
+    }
+
+export const getGetPdfOperationUrl = (id: number,) => {
+
+
+
+
+  return `/api/pdf/${id}`
+}
+
+/**
+ * @summary Get a single PDF operation
+ */
+export const getPdfOperation = async (id: number, options?: RequestInit): Promise<PdfOperation> => {
+
+  return customFetch<PdfOperation>(getGetPdfOperationUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPdfOperationQueryKey = (id: number,) => {
+    return [
+    `/api/pdf/${id}`
+    ] as const;
+    }
+
+
+export const getGetPdfOperationQueryOptions = <TData = Awaited<ReturnType<typeof getPdfOperation>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPdfOperation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPdfOperationQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPdfOperation>>> = ({ signal }) => getPdfOperation(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPdfOperation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPdfOperationQueryResult = NonNullable<Awaited<ReturnType<typeof getPdfOperation>>>
+export type GetPdfOperationQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a single PDF operation
+ */
+
+export function useGetPdfOperation<TData = Awaited<ReturnType<typeof getPdfOperation>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPdfOperation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPdfOperationQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDeletePdfOperationUrl = (id: number,) => {
+
+
+
+
+  return `/api/pdf/${id}`
+}
+
+/**
+ * @summary Delete a PDF operation
+ */
+export const deletePdfOperation = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeletePdfOperationUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeletePdfOperationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePdfOperation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePdfOperation>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deletePdfOperation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePdfOperation>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePdfOperation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePdfOperationMutationResult = NonNullable<Awaited<ReturnType<typeof deletePdfOperation>>>
+
+    export type DeletePdfOperationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a PDF operation
+ */
+export const useDeletePdfOperation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePdfOperation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePdfOperation>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeletePdfOperationMutationOptions(options));
     }
 
 export const getRequestUploadUrlUrl = () => {

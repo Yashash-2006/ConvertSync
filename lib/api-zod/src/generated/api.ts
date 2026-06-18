@@ -92,6 +92,93 @@ export const DeleteConversionParams = zod.object({
 
 
 /**
+ * @summary List all PDF operations
+ */
+export const ListPdfOperationsResponseItem = zod.object({
+  "id": zod.number(),
+  "operationType": zod.enum(['merge', 'split', 'compress', 'protect']),
+  "status": zod.enum(['pending', 'completed', 'failed']),
+  "errorMessage": zod.string().nullish(),
+  "originalFilenames": zod.array(zod.string()),
+  "resultFilename": zod.string().nullish(),
+  "fileSizeBytes": zod.number().nullish(),
+  "resultFileSizeBytes": zod.number().nullish(),
+  "cloudObjectPath": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+export const ListPdfOperationsResponse = zod.array(ListPdfOperationsResponseItem)
+
+
+/**
+ * @summary Merge multiple PDFs into one
+ */
+export const MergePdfsBody = zod.object({
+  "files": zod.array(zod.instanceof(File)).describe('Two or more PDF files to merge')
+})
+
+
+/**
+ * @summary Split a PDF into individual pages (returned as ZIP)
+ */
+export const SplitPdfBody = zod.object({
+  "file": zod.instanceof(File).describe('PDF file to split'),
+  "pageRanges": zod.string().optional().describe('Comma-separated page ranges e.g. \'1-3,4-6,7\'. Leave empty to split into individual pages.')
+})
+
+
+/**
+ * @summary Compress a PDF file
+ */
+export const CompressPdfBody = zod.object({
+  "file": zod.instanceof(File).describe('PDF file to compress'),
+  "level": zod.enum(['low', 'medium', 'high']).optional().describe('Compression level: low (smallest), medium (balanced), high (best quality)')
+})
+
+
+/**
+ * @summary Password-protect a PDF file
+ */
+
+
+
+export const ProtectPdfBody = zod.object({
+  "file": zod.instanceof(File).describe('PDF file to protect'),
+  "password": zod.string().min(1).describe('Password to set on the PDF')
+})
+
+
+/**
+ * @summary Get a single PDF operation
+ */
+export const GetPdfOperationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetPdfOperationResponse = zod.object({
+  "id": zod.number(),
+  "operationType": zod.enum(['merge', 'split', 'compress', 'protect']),
+  "status": zod.enum(['pending', 'completed', 'failed']),
+  "errorMessage": zod.string().nullish(),
+  "originalFilenames": zod.array(zod.string()),
+  "resultFilename": zod.string().nullish(),
+  "fileSizeBytes": zod.number().nullish(),
+  "resultFileSizeBytes": zod.number().nullish(),
+  "cloudObjectPath": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Delete a PDF operation
+ */
+export const DeletePdfOperationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary Request a presigned URL for file upload
  */
 

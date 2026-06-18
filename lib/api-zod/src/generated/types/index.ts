@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './compressPdfInput';
+export * from './compressPdfInputLevel';
 export * from './conversion';
 export * from './conversionInput';
 export * from './conversionInputTargetFormat';
@@ -13,5 +15,11 @@ export * from './conversionStats';
 export * from './conversionStatus';
 export * from './errorResponse';
 export * from './healthStatus';
+export * from './mergePdfInput';
+export * from './pdfOperation';
+export * from './pdfOperationOperationType';
+export * from './pdfOperationStatus';
+export * from './protectPdfInput';
+export * from './splitPdfInput';
 export * from './uploadUrlRequest';
 export * from './uploadUrlResponse';
