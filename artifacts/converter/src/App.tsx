@@ -1,8 +1,13 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
+import {
+  ClerkProvider, SignIn, SignUp, Show,
+  useClerk, useAuth,
+} from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
-import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
+import {
+  Switch, Route, useLocation, Router as WouterRouter, Redirect,
+} from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -33,7 +38,6 @@ const clerkPubKey = publishableKeyFromHost(
 );
 
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function stripBase(path: string): string {
@@ -42,9 +46,7 @@ function stripBase(path: string): string {
     : path;
 }
 
-if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
-}
+if (!clerkPubKey) throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
 
 const clerkAppearance = {
   theme: shadcn,
@@ -113,6 +115,15 @@ function SignUpPage() {
   );
 }
 
+/** Redirect to /sign-in when the user is not authenticated. */
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isSignedIn, isLoaded } = useAuth();
+
+  if (!isLoaded) return null;          // avoid flash
+  if (!isSignedIn) return <Redirect to="/sign-in" />;
+  return <Component />;
+}
+
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
@@ -134,22 +145,56 @@ function Router() {
   return (
     <Layout>
       <Switch>
+        {/* Home is always public — shows landing for signed-out, converter for signed-in */}
         <Route path="/" component={Home} />
-        <Route path="/history" component={History} />
-        <Route path="/merge" component={Merge} />
-        <Route path="/split" component={Split} />
-        <Route path="/compress" component={Compress} />
-        <Route path="/protect" component={Protect} />
-        <Route path="/rotate" component={Rotate} />
-        <Route path="/pdf-to-jpg" component={PdfToJpg} />
-        <Route path="/jpg-to-pdf" component={JpgToPdf} />
-        <Route path="/watermark" component={Watermark} />
-        <Route path="/unlock" component={Unlock} />
-        <Route path="/ocr" component={Ocr} />
-        <Route path="/pdf-to-pptx" component={PdfToPptx} />
-        <Route path="/pdf-to-xlsx" component={PdfToXlsx} />
-        <Route path="/pptx-to-pdf" component={PptxToPdf} />
-        <Route path="/xlsx-to-pdf" component={XlsxToPdf} />
+
+        {/* Every tool and history page requires sign-in */}
+        <Route path="/history">
+          <ProtectedRoute component={History} />
+        </Route>
+        <Route path="/merge">
+          <ProtectedRoute component={Merge} />
+        </Route>
+        <Route path="/split">
+          <ProtectedRoute component={Split} />
+        </Route>
+        <Route path="/compress">
+          <ProtectedRoute component={Compress} />
+        </Route>
+        <Route path="/protect">
+          <ProtectedRoute component={Protect} />
+        </Route>
+        <Route path="/rotate">
+          <ProtectedRoute component={Rotate} />
+        </Route>
+        <Route path="/pdf-to-jpg">
+          <ProtectedRoute component={PdfToJpg} />
+        </Route>
+        <Route path="/jpg-to-pdf">
+          <ProtectedRoute component={JpgToPdf} />
+        </Route>
+        <Route path="/watermark">
+          <ProtectedRoute component={Watermark} />
+        </Route>
+        <Route path="/unlock">
+          <ProtectedRoute component={Unlock} />
+        </Route>
+        <Route path="/ocr">
+          <ProtectedRoute component={Ocr} />
+        </Route>
+        <Route path="/pdf-to-pptx">
+          <ProtectedRoute component={PdfToPptx} />
+        </Route>
+        <Route path="/pdf-to-xlsx">
+          <ProtectedRoute component={PdfToXlsx} />
+        </Route>
+        <Route path="/pptx-to-pdf">
+          <ProtectedRoute component={PptxToPdf} />
+        </Route>
+        <Route path="/xlsx-to-pdf">
+          <ProtectedRoute component={XlsxToPdf} />
+        </Route>
+
         <Route component={NotFound} />
       </Switch>
     </Layout>
