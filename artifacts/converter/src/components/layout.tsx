@@ -83,7 +83,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground group-hover:scale-105 transition-transform">
               <FileDown className="w-5 h-5" />
             </div>
-            <span className="font-bold text-lg tracking-tight">ConvertSync</span>
+            <span className="font-bold text-lg tracking-tight">DoxOffice</span>
           </Link>
 
           <nav className="flex items-center gap-1">
@@ -151,11 +151,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </header>
-
       <main className="flex-1">
         {children}
       </main>
-
       <footer className="py-6 border-t bg-card text-center text-sm text-muted-foreground">
         <p>Built for clarity and speed.</p>
       </footer>
